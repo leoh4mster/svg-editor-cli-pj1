@@ -1,0 +1,10 @@
+# Stage 1: canvas lifecycle and failure recovery.
+help
+init
+canvas
+init 400
+canvas 640.5 480.25
+canvas
+# The following resize must fail without changing either dimension.
+canvas 320 -1
+canvas
