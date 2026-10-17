@@ -44,6 +44,11 @@ export class Rect extends Shape {
       this.width * factor, this.height * factor));
   }
 
+  protected override geometryAttributes(): ReadonlyMap<string, string> {
+    return new Map([["x", String(this.x)], ["y", String(this.y)],
+      ["width", String(this.width)], ["height", String(this.height)]]);
+  }
+
   protected override withGeometryAttribute(name: string, value: string): Rect {
     const geometry = { x: this.x, y: this.y, width: this.width, height: this.height };
     if (!Object.hasOwn(geometry, name)) {

@@ -17,6 +17,10 @@ export class Text extends Shape {
     return "text";
   }
 
+  override get textContent(): string {
+    return this.content;
+  }
+
   override summary(): string {
     return [this.label, `(${this.x},${this.y})`, JSON.stringify(this.content), ...this.appearanceDetails()].join(" ");
   }
@@ -37,6 +41,10 @@ export class Text extends Shape {
   override scaled(factor: number): Text {
     this.validateScale(factor);
     return this.copyAppearanceTo(new Text(this.id, this.x * factor, this.y * factor, this.content));
+  }
+
+  protected override geometryAttributes(): ReadonlyMap<string, string> {
+    return new Map([["x", String(this.x)], ["y", String(this.y)]]);
   }
 
   protected override withGeometryAttribute(name: string, value: string): Text {

@@ -55,5 +55,5 @@ test("piped help works without initialization and comments produce no output", (
   assert.equal(result.stderr, "");
   assert.match(result.stdout, /init \[w\] \[h\]/);
   assert.match(result.stdout, /canvas \[w h\]/);
-  assert.doesNotMatch(result.stdout, /svg>/);
+  assert.doesNotMatch(result.stdout, /(?:^|\n)svg>\s/);
 });

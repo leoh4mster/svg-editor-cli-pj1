@@ -54,7 +54,7 @@ test("CLI editing replay recovers after errors and preserves history across help
   assert.match(result.stdout, /set <id> <attr> <value>/);
   assert.ok(result.stdout.includes("rect#r  parent=g#root\n  x=12 y=0 width=6 height=8\n  fill=#abcdef"));
   assert.match(result.stdout, /stroke-width=0.5/);
-  assert.doesNotMatch(result.stdout, /svg>/);
+  assert.doesNotMatch(result.stdout, /(?:^|\n)svg>\s/);
 });
 
 test("phase-three example replays nested edits, restores deleted trees and starts a new history branch", () => {

@@ -49,7 +49,7 @@ test("CLI replays quoted Chinese text, colors, and nesting and recovers after sh
   assert.match(result.stdout, /create <type> <id>/);
   assert.match(result.stdout, /tree \[id\]/);
   assert.match(result.stdout, /show <id>/);
-  assert.doesNotMatch(result.stdout, /svg>/);
+  assert.doesNotMatch(result.stdout, /(?:^|\n)svg>\s/);
 });
 
 test("the phase-two replay builds the assignment's eight-element flowchart without errors", () => {

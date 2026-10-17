@@ -39,6 +39,10 @@ export class Circle extends Shape {
     return this.copyAppearanceTo(new Circle(this.id, this.cx * factor, this.cy * factor, this.r * factor));
   }
 
+  protected override geometryAttributes(): ReadonlyMap<string, string> {
+    return new Map([["cx", String(this.cx)], ["cy", String(this.cy)], ["r", String(this.r)]]);
+  }
+
   protected override withGeometryAttribute(name: string, value: string): Circle {
     const geometry = { cx: this.cx, cy: this.cy, r: this.r };
     if (!Object.hasOwn(geometry, name)) {

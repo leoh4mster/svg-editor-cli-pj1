@@ -43,6 +43,11 @@ export class Ellipse extends Shape {
       this.rx * factor, this.ry * factor));
   }
 
+  protected override geometryAttributes(): ReadonlyMap<string, string> {
+    return new Map([["cx", String(this.cx)], ["cy", String(this.cy)],
+      ["rx", String(this.rx)], ["ry", String(this.ry)]]);
+  }
+
   protected override withGeometryAttribute(name: string, value: string): Ellipse {
     const geometry = { cx: this.cx, cy: this.cy, rx: this.rx, ry: this.ry };
     if (!Object.hasOwn(geometry, name)) {

@@ -2,7 +2,7 @@
 
 软件设计课程 PJ1 Phase 1：使用 TypeScript 和面向对象设计实现命令行 SVG 编辑器。
 
-项目按 [六阶段开发计划](doc/DEVELOPMENT_PLAN.md) 逐步提交。第 4 阶段已完成：事后分组、重设归属和同级绘制顺序；SVG 文件读写留在第 5 阶段。
+项目按 [六阶段开发计划](doc/DEVELOPMENT_PLAN.md) 逐步提交。第 5 阶段已实现并验证 SVG 文件读取、保存、缺失 ID 补全和 XML 往返；最终验收及 `final` 标签留到第 6 阶段。
 
 ## 运行
 
@@ -18,6 +18,8 @@ npm run cli
 ```text
 help
 init [w] [h]
+read <file.svg>
+save [file.svg]
 canvas [w h]
 create <type> <id> [params…] [in <containerId>]
 tree [id]
@@ -82,7 +84,26 @@ create g <id>
 
 结构调整保留节点自身的几何属性和显式样式；继承样式随新父级变化。解组移除容器自身的样式，不将继承结果写入子图形属性。已经位于目标顺序的合法命令仍算一次成功编辑。
 
-每条成功编辑（包括 `create`）为一个撤销单元。`undo` 后成功执行新编辑会清空 redo；显示命令和失败命令不改变历史。成功执行 `init` 或修改画布尺寸后，`undo` / `redo` 均报 `undo not allowed after io command`，直到下一次成功编辑。画布查询不禁用历史。
+每条成功编辑（包括 `create`）为一个撤销单元。`undo` 后成功执行新编辑会清空 redo；显示命令和失败命令不改变历史。成功执行 `init/read/save` 或修改画布尺寸后，`undo` / `redo` 均报 `undo not allowed after io command`，直到下一次成功编辑。画布查询不禁用历史。
+
+`read` 无须先 `init`，读取成功后替换当前文档；`save` 需要当前文档。`save 文件.svg` 保存并记住路径，无参数 `save` 使用最近一次成功 `read/save` 的路径；新建文档后需要先显式指定保存路径。相对路径相对于启动程序时的工作目录，带空格的路径用双引号包裹。成功 `init` 清空路径；画布修改、编辑和撤销重做保留路径。读写失败保留当前文档、路径及 undo/redo 状态。
+
+例如，在前面的交互中继续输入：
+
+```text
+save "diagram draft.svg"
+read "diagram draft.svg"
+move node 10 0
+save
+```
+
+读取范围是 XML 1.0 的六种内置类型及嵌套 `g`，不是完整 SVG 标准。缺失或空 ID 的图形按类型和序号补全并输出警告；事先保留文件中的全部显式 ID，避免生成 ID 与后文节点冲突。根 `svg` 的非空 ID 也参与唯一性约束，但不作为图形接受编辑命令。
+
+保存输出 UTF-8 SVG，按节点原顺序写出，转义属性和文本中的 XML 特殊字符。保留导入的根 `viewBox`、显式样式，以及 `font-size`、`text-anchor`、`data-*`、命名空间声明等额外属性；这些额外属性可随图形编辑和撤销重做保留，但不扩展 `set` 白名单。画布尺寸修改会把 `viewBox` 重设为 `0 0 宽 高`。
+
+导入的长度接受纯数字或 `px`，缺省几何值为零；根尺寸缺省时取 `viewBox` 尺寸，仍缺省时取 800×600。百分比和其他长度单位、坐标列表、`transform`、`style`、`href`、事件属性、DOCTYPE、处理指令、外部实体、未知标签和含子元素的复杂文本不在支持范围，报错后保留当前状态。标准 XML 声明、注释和纯文本 CDATA 可读取；注释及原始缩进、属性顺序、实体写法不会按原文件逐字保留。
+
+文件写入使用目标同目录的临时文件和原子重命名；覆盖普通文件时保留其权限，符号链接仍指向原目标。文件读取严格校验 UTF-8，编码或 XML 内容错误不会替换当前文档。
 
 也可从标准输入回放脚本；管道模式不显示交互提示符：
 
@@ -114,6 +135,12 @@ npm run cli --silent < examples/phase3.cli
 npm run cli --silent < examples/phase4.cli
 ```
 
+`examples/phase5.cli` 从 `examples/imported.svg` 读入外部 SVG，演示补 ID、编辑、保存、读回及默认路径保存；在工作目录生成 `phase5-output.svg`：
+
+```sh
+npm run cli --silent < examples/phase5.cli
+```
+
 ## 检查
 
 ```sh
@@ -124,7 +151,7 @@ npm run check
 
 ## 当前范围
 
-当前范围为画布管理、六种图形创建、结构查看、基础编辑、分组与层级调整、撤销重做。SVG 文件读写尚未实现；当前示例检查 CLI 输出。`help` 只列出当前可执行的命令。题目中的插件类型 `box` 不属于本次 PJ1 Phase 1 的实现范围。
+当前范围为画布管理、六种图形创建、结构查看、基础编辑、分组与层级调整、撤销重做，以及上述 SVG 子集的读取与保存。第 6 阶段继续完成题目完整示例、浏览器渲染和最终交付验收。`help` 列出当前可执行的命令。题目中的插件类型 `box` 不属于本次 PJ1 Phase 1 的实现范围。
 
 - [GitHub 私有仓库](https://github.com/leoh4mster/svg-editor-cli-pj1)
 - [课程要求](phase_cli_1.md)

@@ -67,7 +67,7 @@ test("CLI hierarchy replay recovers from errors, keeps redo through rejected edi
   for (const syntax of ["group <newGid>", "ungroup <gid>", "addto <gid> <id>", "front <id>", "back <id>"]) {
     assert.ok(result.stdout.includes(syntax), `help should include ${syntax}`);
   }
-  assert.doesNotMatch(result.stdout, /svg>/);
+  assert.doesNotMatch(result.stdout, /(?:^|\n)svg>\s/);
 });
 
 test("phase-four example replays all hierarchy commands and history without errors", () => {

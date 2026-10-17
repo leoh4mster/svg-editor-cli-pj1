@@ -1,0 +1,21 @@
+# Read an external SVG. The unnamed background receives rect1.
+read examples/imported.svg
+tree
+show rect1
+
+# Imported nested shapes support the same editing and history commands.
+move g1 80 60
+scale g1 2
+set t1 text "课程作业 & SVG <v2>"
+set r2 stroke #3366ff
+set r2 stroke-width 0
+undo
+redo
+
+# An explicit save establishes the default path for later saves.
+save phase5-output.svg
+read phase5-output.svg
+tree
+show r2
+set t1 fill #4a90d9
+save

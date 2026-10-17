@@ -4,14 +4,35 @@ import { CommandHistory } from "./history/CommandHistory.js";
 
 export class EditorSession {
   private document: SvgDocument | undefined;
+  private filePath: string | undefined;
   private readonly history = new CommandHistory();
+
+  get currentPath(): string | undefined {
+    return this.filePath;
+  }
 
   initialize(width = 800, height = 600): SvgDocument {
     // A rejected replacement must leave the current document untouched.
     const document = new SvgDocument(width, height);
     this.document = document;
+    this.filePath = undefined;
     this.history.blockAfterIo();
     return document;
+  }
+
+  loadDocument(document: SvgDocument, path: string): SvgDocument {
+    // Complete every potentially failing copy before changing session state.
+    const imported = document.clone();
+    this.document = imported;
+    this.filePath = path;
+    this.history.blockAfterIo();
+    return imported;
+  }
+
+  markSaved(path: string): void {
+    this.requireDocument();
+    this.filePath = path;
+    this.history.blockAfterIo();
   }
 
   requireDocument(): SvgDocument {

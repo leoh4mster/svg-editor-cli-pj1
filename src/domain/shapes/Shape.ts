@@ -7,6 +7,7 @@ export abstract class Shape {
   private fill: string | undefined;
   private stroke: string | undefined;
   private strokeWidth: number | undefined;
+  private extraAttributes = new Map<string, string>();
 
   protected constructor(id: string, fill?: string, stroke?: string) {
     if (id.length === 0 || /[\s\u0000-\u001f\u007f]/u.test(id)) {
@@ -33,6 +34,27 @@ export abstract class Shape {
 
   get children(): readonly Shape[] {
     return [];
+  }
+
+  get svgAttributes(): ReadonlyMap<string, string> {
+    const attributes = new Map<string, string>([["id", this.id], ...this.geometryAttributes()]);
+    if (this.fill !== undefined) {
+      attributes.set("fill", this.fill);
+    }
+    if (this.stroke !== undefined) {
+      attributes.set("stroke", this.stroke);
+    }
+    if (this.strokeWidth !== undefined) {
+      attributes.set("stroke-width", String(this.strokeWidth));
+    }
+    for (const [name, value] of this.extraAttributes) {
+      attributes.set(name, value);
+    }
+    return attributes;
+  }
+
+  get textContent(): string | undefined {
+    return undefined;
   }
 
   abstract summary(): string;
@@ -62,6 +84,18 @@ export abstract class Shape {
       return copy;
     }
     return this.withGeometryAttribute(name, value);
+  }
+
+  withExtraAttributes(attributes: ReadonlyMap<string, string>): Shape {
+    const canonicalNames = new Set(["id", "fill", "stroke", "stroke-width", ...this.geometryAttributes().keys()]);
+    for (const name of attributes.keys()) {
+      if (canonicalNames.has(name)) {
+        throw new EditorError(`extra attribute must not redefine ${name}`);
+      }
+    }
+    const copy = this.clone();
+    copy.extraAttributes = new Map(attributes);
+    return copy;
   }
 
   walk(): readonly Shape[] {
@@ -114,13 +148,15 @@ export abstract class Shape {
 
   protected appearanceDetails(): readonly string[] {
     return [...this.appearance("fill", this.fill), ...this.appearance("stroke", this.stroke),
-      ...(this.strokeWidth === undefined ? [] : [`stroke-width=${this.strokeWidth}`])];
+      ...(this.strokeWidth === undefined ? [] : [`stroke-width=${this.strokeWidth}`]),
+      ...[...this.extraAttributes].map(([name, value]) => `${name}=${value}`)];
   }
 
   protected copyAppearanceTo<T extends Shape>(copy: T): T {
     copy.fill = this.fill;
     copy.stroke = this.stroke;
     copy.strokeWidth = this.strokeWidth;
+    copy.extraAttributes = new Map(this.extraAttributes);
     return copy;
   }
 
@@ -137,6 +173,10 @@ export abstract class Shape {
 
   protected withGeometryAttribute(name: string, _value: string): Shape {
     return this.unknownAttribute(name);
+  }
+
+  protected geometryAttributes(): ReadonlyMap<string, string> {
+    return new Map();
   }
 
   protected unknownAttribute(name: string): never {

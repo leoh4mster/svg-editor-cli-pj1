@@ -9,9 +9,19 @@ export class SvgDocument {
   private shapesById = new Map<string, Shape>();
   private parentsById = new Map<string, Shape | undefined>();
   private mutationKey = Symbol("document mutation");
+  private rootMetadata = new Map<string, string>();
 
-  constructor(width = 800, height = 600) {
+  constructor(width = 800, height = 600, rootMetadata: ReadonlyMap<string, string> = new Map()) {
     this.resize(width, height);
+    for (const [name, value] of rootMetadata) {
+      if (name === "width" || name === "height" || name === "xmlns") {
+        throw new EditorError(`root metadata must not redefine ${name}`);
+      }
+      if (name === "id" && (value.length === 0 || /[\s\u0000-\u001f\u007f]/u.test(value))) {
+        throw new EditorError("id must be nonempty and contain no whitespace or control characters");
+      }
+      this.rootMetadata.set(name, value);
+    }
   }
 
   get width(): number {
@@ -26,8 +36,12 @@ export class SvgDocument {
     return [...this.rootChildren];
   }
 
+  get svgAttributes(): ReadonlyMap<string, string> {
+    return new Map([["width", String(this.width)], ["height", String(this.height)], ...this.rootMetadata]);
+  }
+
   clone(): SvgDocument {
-    const copy = new SvgDocument(this.width, this.height);
+    const copy = new SvgDocument(this.width, this.height, this.rootMetadata);
     for (const shape of this.rootChildren) {
       copy.addShape(shape.clone());
     }
@@ -94,7 +108,7 @@ export class SvgDocument {
 
   groupShapes(newId: string, ids: readonly string[]): Shape {
     const group = new Group(newId);
-    if (this.shapesById.has(newId)) {
+    if (this.shapesById.has(newId) || this.rootMetadata.get("id") === newId) {
       throw new EditorError(`id already exists: ${newId}`);
     }
     if (ids.length < 2) {
@@ -191,6 +205,7 @@ export class SvgDocument {
     this.validateDimension(height, "height");
     this.canvasWidth = width;
     this.canvasHeight = height;
+    this.rootMetadata.set("viewBox", `0 0 ${width} ${height}`);
   }
 
   private validateDimension(value: number, name: string): void {
@@ -264,7 +279,7 @@ export class SvgDocument {
   }
 
   private rewriteStructure(overrides: ReadonlyMap<string | undefined, readonly Shape[]>): void {
-    const prepared = new SvgDocument(this.width, this.height);
+    const prepared = new SvgDocument(this.width, this.height, this.rootMetadata);
     const seenIds = new Set<string>();
     const ancestors = new Set<Shape>();
     for (const root of overrides.get(undefined) ?? this.rootChildren) {
@@ -308,7 +323,8 @@ export class SvgDocument {
     entries: [Shape, Shape | undefined][],
     replacedIds: ReadonlySet<string> = new Set<string>(),
   ): void {
-    if (seenIds.has(shape.id) || (this.shapesById.has(shape.id) && !replacedIds.has(shape.id))) {
+    if (seenIds.has(shape.id) || this.rootMetadata.get("id") === shape.id
+      || (this.shapesById.has(shape.id) && !replacedIds.has(shape.id))) {
       throw new EditorError(`id already exists: ${shape.id}`);
     }
     shape.assertDetached();
