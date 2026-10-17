@@ -15,7 +15,7 @@ export class HelpCommand extends Command {
   override execute(args: readonly string[], _session: EditorSession): string {
     new CommandArguments(args, this.usage).expectCount(0);
     return [
-      "Available commands (development stage 2/6):",
+      "Available commands (development stage 3/6):",
       ...this.catalog.describeCommands(),
       ...(this.shapes === undefined ? [] : [
         "Shape creation (each type also supports a trailing in <containerId>):",

@@ -1,4 +1,5 @@
 import { EditorError } from "../domain/EditorError.js";
+import { NumericValue } from "../domain/NumericValue.js";
 
 export class CommandArguments {
   constructor(
@@ -13,18 +14,6 @@ export class CommandArguments {
   }
 
   number(index: number, name: string): number {
-    const text = this.values[index];
-    // Accept decimal SVG-style numbers, including fractions and exponents.
-    if (
-      text === undefined ||
-      !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)
-    ) {
-      throw new EditorError(`invalid number for ${name}: ${text ?? "(missing)"}`);
-    }
-    const value = Number(text);
-    if (!Number.isFinite(value)) {
-      throw new EditorError(`invalid number for ${name}: ${text}`);
-    }
-    return value;
+    return NumericValue.parse(this.values[index], name);
   }
 }

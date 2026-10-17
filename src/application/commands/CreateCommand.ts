@@ -1,15 +1,14 @@
 import { EditorError } from "../../domain/EditorError.js";
-import type { EditorSession } from "../EditorSession.js";
+import type { SvgDocument } from "../../domain/SvgDocument.js";
 import type { ShapeFactory } from "../ShapeFactory.js";
-import { Command } from "./Command.js";
+import { EditCommand } from "./EditCommand.js";
 
-export class CreateCommand extends Command {
+export class CreateCommand extends EditCommand {
   constructor(private readonly factory: ShapeFactory) {
     super("create <type> <id> [params...] [in <containerId>]", "Create a shape, optionally inside a group.");
   }
 
-  override execute(args: readonly string[], session: EditorSession): string {
-    const document = session.requireDocument();
+  protected override apply(args: readonly string[], document: SvgDocument): string {
     const type = args[0];
     const id = args[1];
     if (type === undefined || id === undefined) {

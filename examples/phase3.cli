@@ -1,0 +1,36 @@
+# Phase 3: edit a nested node, undo/redo, then restore a deleted subtree.
+init 800 600
+create g flowchart
+create g node in flowchart
+create rect body 120 100 160 60 #4a90d9 in node
+create text label 155 135 "开始 处理数据" in node
+create line arrow 280 130 520 130 black in flowchart
+tree
+
+# Moving a group moves its complete subtree as one undo unit.
+move node 20 10
+show body
+undo
+redo
+
+# Scaling changes both positions and sizes; common styles remain explicit.
+scale node .5
+set label text "处理数据 v2"
+set node fill #f5a623
+set body stroke #222222
+set body stroke-width 2
+tree
+
+# Undo restores the entire deleted group, its children, and their order.
+delete node
+tree
+undo
+tree
+
+# A successful new edit after undo replaces the previous redo branch.
+set label text "新的处理分支"
+show label
+undo
+redo
+tree
+canvas

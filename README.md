@@ -2,7 +2,7 @@
 
 软件设计课程 PJ1 Phase 1：使用 TypeScript 和面向对象设计实现命令行 SVG 编辑器。
 
-项目按 [六阶段开发计划](doc/DEVELOPMENT_PLAN.md) 逐步提交。第 2 阶段已完成：在 CLI 与画布管理基础上增加六种图形、嵌套创建和结构查看；完整功能仍在开发中。
+项目按 [六阶段开发计划](doc/DEVELOPMENT_PLAN.md) 逐步提交。第 3 阶段已完成：在六种图形、嵌套创建和结构查看基础上增加基础编辑与撤销重做；完整功能仍在开发中。
 
 ## 运行
 
@@ -22,6 +22,12 @@ canvas [w h]
 create <type> <id> [params…] [in <containerId>]
 tree [id]
 show <id>
+move <id> <dx> <dy>
+scale <id> <factor>
+set <id> <attr> <value>
+delete <id>
+undo
+redo
 ```
 
 示例：
@@ -61,6 +67,12 @@ create g <id>
 
 坐标允许负数，所有几何数值必须有限；图形尺寸、半径允许零但不允许负数。省略 `fill` / `stroke` 时不写入该属性，保留 SVG 默认语义。ID 全文档唯一、大小写敏感，允许中文，不允许空值、空白或控制字符。`tree <id>` 查看子树；`show <id>` 显示完整属性和父级。
 
+`move` 使用增量，`scale` 的倍数必须为有限正数，同时缩放位置和尺寸；容器将变换递归应用到所有子孙。缩放不修改 `stroke-width` 或文本内容。`delete` 删除整个子树。
+
+`set` 支持所有类型的 `fill`、`stroke`、`stroke-width`，以及该类型自身的几何属性；`text` 另支持 `text` 内容。`stroke-width`、尺寸与半径必须非负。`set g fill ...` 修改容器自身的样式，遵循 SVG 样式继承语义，保留子节点显式设置的样式。未知属性报错。
+
+每条成功编辑（包括 `create`）为一个撤销单元。`undo` 后成功执行新编辑会清空 redo；显示命令和失败命令不改变历史。成功执行 `init` 或修改画布尺寸后，`undo` / `redo` 均报 `undo not allowed after io command`，直到下一次成功编辑。画布查询不禁用历史。
+
 也可从标准输入回放脚本；管道模式不显示交互提示符：
 
 ```sh
@@ -79,6 +91,12 @@ npm run cli --silent < examples/phase1.cli
 npm run cli --silent < examples/phase2.cli
 ```
 
+`examples/phase3.cli` 在嵌套结构上演示移动、缩放、修改文本、删除、撤销重做及历史分支切换：
+
+```sh
+npm run cli --silent < examples/phase3.cli
+```
+
 ## 检查
 
 ```sh
@@ -89,7 +107,7 @@ npm run check
 
 ## 当前范围
 
-当前范围为画布管理、六种图形创建、创建时指定父容器和结构查看。移动、缩放、属性修改、删除、事后分组、撤销重做及 SVG 文件读写尚未实现；本阶段流程图示例只检查 CLI 输出。`help` 只列出当前可执行的命令。题目中的插件类型 `box` 不属于本次 PJ1 Phase 1 的实现范围。
+当前范围为画布管理、六种图形创建、创建时指定父容器、结构查看、基础编辑与撤销重做。事后分组、层级调整和 SVG 文件读写尚未实现；本阶段示例只检查 CLI 输出。`help` 只列出当前可执行的命令。题目中的插件类型 `box` 不属于本次 PJ1 Phase 1 的实现范围。
 
 - [GitHub 私有仓库](https://github.com/leoh4mster/svg-editor-cli-pj1)
 - [课程要求](phase_cli_1.md)
