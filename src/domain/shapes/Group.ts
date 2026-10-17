@@ -36,6 +36,18 @@ export class Group extends Shape {
     return copy;
   }
 
+  override withChildren(children: readonly Shape[]): Group {
+    const originalNodes = new Set(this.walk());
+    const ids = new Set([this.id]);
+    const ancestors = new Set<Shape>();
+    for (const child of children) {
+      this.validateReplacementChild(child, ids, ancestors, originalNodes);
+    }
+    const copy = this.copyAppearanceTo(new Group(this.id));
+    copy.childShapes.push(...children);
+    return copy;
+  }
+
   override moved(dx: number, dy: number): Group {
     this.validateTranslation(dx, dy);
     const copy = this.copyAppearanceTo(new Group(this.id));
@@ -102,5 +114,29 @@ export class Group extends Shape {
       this.childShapes.splice(index, 1);
     }
     return previous;
+  }
+
+  private validateReplacementChild(
+    shape: Shape,
+    ids: Set<string>,
+    ancestors: Set<Shape>,
+    originalNodes: ReadonlySet<Shape>,
+  ): void {
+    if (shape === this || ancestors.has(shape)) {
+      throw new EditorError(`cannot add a container into its own descendant: ${this.id}`);
+    }
+    shape.assertDetached();
+    if (originalNodes.has(shape)) {
+      throw new EditorError(`replacement children must not share nodes with original container: ${this.id}`);
+    }
+    if (ids.has(shape.id)) {
+      throw new EditorError(`id already exists: ${shape.id}`);
+    }
+    ids.add(shape.id);
+    ancestors.add(shape);
+    for (const child of shape.children) {
+      this.validateReplacementChild(child, ids, ancestors, originalNodes);
+    }
+    ancestors.delete(shape);
   }
 }

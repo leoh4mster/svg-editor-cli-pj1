@@ -1,0 +1,36 @@
+# Phase 4: collect existing shapes, change ownership, and adjust SVG painting order.
+init 800 600
+create rect bg 0 0 800 600 #ffffff
+create text title 20 40 "My Diagram 第四阶段"
+create circle c1 100 100 20 red
+create rect box 200 80 60 60 #3366ff
+
+# Reversed arguments still preserve the original document order: c1, then box.
+group markers box c1
+tree markers
+
+# A root group can be moved under another container without changing coordinates.
+create g scene
+addto scene markers
+create ellipse halo 150 100 130 50 #eeeeee in scene
+back halo
+front markers
+tree scene
+
+# Group inside a group, then promote its children at the original slot.
+group pair box c1
+tree scene
+ungroup pair
+undo
+redo
+show c1
+
+# Dissolving markers is now allowed because scene is its parent.
+ungroup markers
+show box
+back box
+front c1
+undo
+redo
+tree
+canvas

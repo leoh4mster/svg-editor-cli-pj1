@@ -1,13 +1,14 @@
 import { EditorError } from "./EditorError.js";
+import { Group } from "./shapes/Group.js";
 import type { Shape } from "./shapes/Shape.js";
 
 export class SvgDocument {
   private canvasWidth = 800;
   private canvasHeight = 600;
-  private readonly rootChildren: Shape[] = [];
-  private readonly shapesById = new Map<string, Shape>();
-  private readonly parentsById = new Map<string, Shape | undefined>();
-  private readonly mutationKey = Symbol("document mutation");
+  private rootChildren: Shape[] = [];
+  private shapesById = new Map<string, Shape>();
+  private parentsById = new Map<string, Shape | undefined>();
+  private mutationKey = Symbol("document mutation");
 
   constructor(width = 800, height = 600) {
     this.resize(width, height);
@@ -91,6 +92,99 @@ export class SvgDocument {
     return shape;
   }
 
+  groupShapes(newId: string, ids: readonly string[]): Shape {
+    const group = new Group(newId);
+    if (this.shapesById.has(newId)) {
+      throw new EditorError(`id already exists: ${newId}`);
+    }
+    if (ids.length < 2) {
+      throw new EditorError("group requires at least two shapes");
+    }
+    const selectedIds = new Set<string>();
+    for (const id of ids) {
+      if (selectedIds.has(id)) {
+        throw new EditorError(`shape selected more than once: ${id}`);
+      }
+      this.findShape(id);
+      selectedIds.add(id);
+    }
+
+    // Document preorder, rather than argument order, defines the stable selection order.
+    const selected = this.rootChildren.flatMap((root) => root.walk())
+      .filter((shape) => selectedIds.has(shape.id));
+    for (const shape of selected) {
+      if (shape.walk().slice(1).some((descendant) => selectedIds.has(descendant.id))) {
+        throw new EditorError(`cannot group a container into its own descendant: ${shape.id}`);
+      }
+    }
+
+    const parent = this.commonParentOf(selected);
+    const siblings = this.childrenOf(parent);
+    const affectedBranches = new Set(selected.map((shape) => this.branchUnder(shape, parent)));
+    const insertionIndex = siblings.findIndex((shape) => affectedBranches.has(shape));
+    if (insertionIndex < 0) {
+      throw new EditorError("inconsistent document structure");
+    }
+
+    const overrides = new Map<string | undefined, readonly Shape[]>();
+    for (const shape of selected) {
+      const oldParent = this.parentsById.get(shape.id);
+      const remaining = overrides.get(oldParent?.id) ?? this.childrenOf(oldParent);
+      overrides.set(oldParent?.id, remaining.filter((child) => child.id !== shape.id));
+    }
+    const groupedSiblings: Shape[] = [];
+    siblings.forEach((shape, index) => {
+      if (index === insertionIndex) {
+        groupedSiblings.push(group);
+      }
+      if (!selectedIds.has(shape.id)) {
+        groupedSiblings.push(shape);
+      }
+    });
+    overrides.set(parent?.id, groupedSiblings);
+    overrides.set(newId, selected);
+    this.rewriteStructure(overrides);
+    return this.findShape(newId);
+  }
+
+  ungroupShape(id: string): readonly Shape[] {
+    const group = this.findShape(id);
+    if (!group.isContainer) {
+      throw new EditorError(`not a container: ${id}`);
+    }
+    const parent = this.parentsById.get(id);
+    if (parent === undefined) {
+      throw new EditorError(`cannot ungroup top-level container: ${id}`);
+    }
+    const promotedIds = group.children.map((child) => child.id);
+    const siblings = parent.children.flatMap((child) => child.id === id ? group.children : [child]);
+    this.rewriteStructure(new Map([[parent.id, siblings]]));
+    return promotedIds.map((childId) => this.findShape(childId));
+  }
+
+  addTo(containerId: string, id: string): Shape {
+    const parent = this.requireContainer(containerId);
+    const shape = this.findShape(id);
+    if (parent === shape || this.isAncestor(shape, parent)) {
+      throw new EditorError(`cannot add a container into its own descendant: ${id}`);
+    }
+    const oldParent = this.parentsById.get(id);
+    const overrides = new Map<string | undefined, readonly Shape[]>();
+    overrides.set(oldParent?.id, this.childrenOf(oldParent).filter((child) => child.id !== id));
+    const targetChildren = overrides.get(containerId) ?? parent.children;
+    overrides.set(containerId, [...targetChildren, shape]);
+    this.rewriteStructure(overrides);
+    return this.findShape(id);
+  }
+
+  bringToFront(id: string): Shape {
+    return this.reorderShape(id, true);
+  }
+
+  sendToBack(id: string): Shape {
+    return this.reorderShape(id, false);
+  }
+
   resize(width: number, height: number): void {
     // Validate the entire change before assigning either dimension.
     this.validateDimension(width, "width");
@@ -103,6 +197,108 @@ export class SvgDocument {
     if (!Number.isFinite(value) || value <= 0) {
       throw new EditorError(`canvas ${name} must be a finite positive number`);
     }
+  }
+
+  private requireContainer(id: string): Shape {
+    const shape = this.shapesById.get(id);
+    if (shape === undefined) {
+      throw new EditorError(`no such container: ${id}`);
+    }
+    if (!shape.isContainer) {
+      throw new EditorError(`not a container: ${id}`);
+    }
+    return shape;
+  }
+
+  private childrenOf(parent: Shape | undefined): readonly Shape[] {
+    return parent === undefined ? this.rootChildren : parent.children;
+  }
+
+  private isAncestor(ancestor: Shape, shape: Shape): boolean {
+    let parent = this.parentsById.get(shape.id);
+    while (parent !== undefined) {
+      if (parent === ancestor) {
+        return true;
+      }
+      parent = this.parentsById.get(parent.id);
+    }
+    return false;
+  }
+
+  private commonParentOf(shapes: readonly Shape[]): Shape | undefined {
+    const first = shapes[0];
+    if (first === undefined) {
+      throw new EditorError("group requires at least two shapes");
+    }
+    let parent = this.parentsById.get(first.id);
+    while (parent !== undefined) {
+      const candidate = parent;
+      if (shapes.every((shape) => this.isAncestor(candidate, shape))) {
+        return candidate;
+      }
+      parent = this.parentsById.get(candidate.id);
+    }
+    return undefined;
+  }
+
+  private branchUnder(shape: Shape, parent: Shape | undefined): Shape {
+    let branch = shape;
+    while (this.parentsById.get(branch.id) !== parent) {
+      const ancestor = this.parentsById.get(branch.id);
+      if (ancestor === undefined) {
+        throw new EditorError("inconsistent document structure");
+      }
+      branch = ancestor;
+    }
+    return branch;
+  }
+
+  private reorderShape(id: string, front: boolean): Shape {
+    const shape = this.findShape(id);
+    const parent = this.parentsById.get(id);
+    const others = this.childrenOf(parent).filter((child) => child.id !== id);
+    // SVG paints later siblings on top of earlier siblings.
+    const siblings = front ? [...others, shape] : [shape, ...others];
+    this.rewriteStructure(new Map([[parent?.id, siblings]]));
+    return this.findShape(id);
+  }
+
+  private rewriteStructure(overrides: ReadonlyMap<string | undefined, readonly Shape[]>): void {
+    const prepared = new SvgDocument(this.width, this.height);
+    const seenIds = new Set<string>();
+    const ancestors = new Set<Shape>();
+    for (const root of overrides.get(undefined) ?? this.rootChildren) {
+      const replacement = this.prepareShape(root, overrides, seenIds, ancestors);
+      prepared.addShape(replacement);
+    }
+
+    // Preparation owns only fresh nodes. Nothing above can mutate the live tree,
+    // so even a late validation failure leaves its topology and indexes intact.
+    this.rootChildren = prepared.rootChildren;
+    this.shapesById = prepared.shapesById;
+    this.parentsById = prepared.parentsById;
+    this.mutationKey = prepared.mutationKey;
+  }
+
+  private prepareShape(
+    shape: Shape,
+    overrides: ReadonlyMap<string | undefined, readonly Shape[]>,
+    seenIds: Set<string>,
+    ancestors: Set<Shape>,
+  ): Shape {
+    if (ancestors.has(shape)) {
+      throw new EditorError(`cannot add a container into its own descendant: ${shape.id}`);
+    }
+    if (seenIds.has(shape.id)) {
+      throw new EditorError(`id already exists: ${shape.id}`);
+    }
+    seenIds.add(shape.id);
+    ancestors.add(shape);
+    const children = (overrides.get(shape.id) ?? shape.children)
+      .map((child) => this.prepareShape(child, overrides, seenIds, ancestors));
+    const replacement = shape.isContainer ? shape.withChildren(children) : shape.clone();
+    ancestors.delete(shape);
+    return replacement;
   }
 
   private collectNewSubtree(

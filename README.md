@@ -2,7 +2,7 @@
 
 软件设计课程 PJ1 Phase 1：使用 TypeScript 和面向对象设计实现命令行 SVG 编辑器。
 
-项目按 [六阶段开发计划](doc/DEVELOPMENT_PLAN.md) 逐步提交。第 3 阶段已完成：在六种图形、嵌套创建和结构查看基础上增加基础编辑与撤销重做；完整功能仍在开发中。
+项目按 [六阶段开发计划](doc/DEVELOPMENT_PLAN.md) 逐步提交。第 4 阶段已完成：事后分组、重设归属和同级绘制顺序；SVG 文件读写留在第 5 阶段。
 
 ## 运行
 
@@ -26,6 +26,11 @@ move <id> <dx> <dy>
 scale <id> <factor>
 set <id> <attr> <value>
 delete <id>
+group <newGid> <id1> <id2>…
+ungroup <gid>
+addto <gid> <id>
+front <id>
+back <id>
 undo
 redo
 ```
@@ -71,6 +76,12 @@ create g <id>
 
 `set` 支持所有类型的 `fill`、`stroke`、`stroke-width`，以及该类型自身的几何属性；`text` 另支持 `text` 内容。`stroke-width`、尺寸与半径必须非负。`set g fill ...` 修改容器自身的样式，遵循 SVG 样式继承语义，保留子节点显式设置的样式。未知属性报错。
 
+`group` 至少接收两个不同的已有 ID，拒绝同时选择容器和它的子孙。组内顺序采用操作前文档的前序遍历顺序，不采用参数顺序。新组放在所选节点原父级的最近公共祖先下；跨根节点时放在画布下，占据最早受影响的直属子节点位置。未选择节点的相对顺序保留，原父容器即使变空也保留。
+
+`ungroup` 仅解散嵌套容器，子节点按原顺序占据原容器位置；根级容器按题目要求禁止解组。`addto` 将已有图形移到目标容器末尾，同父级时也会重新排到末尾；不允许自身归属或祖先移入后代。`front` 移到同级数组末尾，对应 SVG 中后绘制、显示在上层；`back` 移到同级开头。它们不改变父级。
+
+结构调整保留节点自身的几何属性和显式样式；继承样式随新父级变化。解组移除容器自身的样式，不将继承结果写入子图形属性。已经位于目标顺序的合法命令仍算一次成功编辑。
+
 每条成功编辑（包括 `create`）为一个撤销单元。`undo` 后成功执行新编辑会清空 redo；显示命令和失败命令不改变历史。成功执行 `init` 或修改画布尺寸后，`undo` / `redo` 均报 `undo not allowed after io command`，直到下一次成功编辑。画布查询不禁用历史。
 
 也可从标准输入回放脚本；管道模式不显示交互提示符：
@@ -97,6 +108,12 @@ npm run cli --silent < examples/phase2.cli
 npm run cli --silent < examples/phase3.cli
 ```
 
+`examples/phase4.cli` 演示分组、解组、移动归属和同级顺序调整，并通过撤销重做观察完整结构恢复：
+
+```sh
+npm run cli --silent < examples/phase4.cli
+```
+
 ## 检查
 
 ```sh
@@ -107,7 +124,7 @@ npm run check
 
 ## 当前范围
 
-当前范围为画布管理、六种图形创建、创建时指定父容器、结构查看、基础编辑与撤销重做。事后分组、层级调整和 SVG 文件读写尚未实现；本阶段示例只检查 CLI 输出。`help` 只列出当前可执行的命令。题目中的插件类型 `box` 不属于本次 PJ1 Phase 1 的实现范围。
+当前范围为画布管理、六种图形创建、结构查看、基础编辑、分组与层级调整、撤销重做。SVG 文件读写尚未实现；当前示例检查 CLI 输出。`help` 只列出当前可执行的命令。题目中的插件类型 `box` 不属于本次 PJ1 Phase 1 的实现范围。
 
 - [GitHub 私有仓库](https://github.com/leoh4mster/svg-editor-cli-pj1)
 - [课程要求](phase_cli_1.md)

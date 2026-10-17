@@ -45,6 +45,10 @@ export abstract class Shape {
 
   abstract scaled(factor: number): Shape;
 
+  withChildren(_children: readonly Shape[]): Shape {
+    throw new EditorError(`not a container: ${this.id}`);
+  }
+
   withAttribute(name: string, value: string): Shape {
     if (name === "fill" || name === "stroke" || name === "stroke-width") {
       const copy = this.clone();
