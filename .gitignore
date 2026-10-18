@@ -6,3 +6,4 @@ coverage/
 *.log
 .npm-cache/
 /phase5-output.svg
+/examples/output/*.svg

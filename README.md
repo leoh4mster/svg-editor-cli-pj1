@@ -2,7 +2,7 @@
 
 软件设计课程 PJ1 Phase 1：使用 TypeScript 和面向对象设计实现命令行 SVG 编辑器。
 
-项目按 [六阶段开发计划](doc/DEVELOPMENT_PLAN.md) 逐步提交。第 5 阶段已实现并验证 SVG 文件读取、保存、缺失 ID 补全和 XML 往返；最终验收及 `final` 标签留到第 6 阶段。
+程序支持六种内置图形、十九条命令，完成文档管理、嵌套图形编辑、分组与绘制顺序、撤销重做及 SVG 读写。架构方案、AI 协作过程、一致性自查和质量保证见 [项目报告](doc/README.md)，实际检查结果与复现方法见 [验收记录](doc/ACCEPTANCE.md)。开发增量保存在 [六阶段计划](doc/DEVELOPMENT_PLAN.md) 和 Git 历史中。
 
 ## 运行
 
@@ -141,19 +141,37 @@ npm run cli --silent < examples/phase4.cli
 npm run cli --silent < examples/phase5.cli
 ```
 
+最终验收脚本回放题目完整会话和两节点流程图，在 `examples/output/` 生成 SVG：
+
+```sh
+npm run cli --silent < examples/acceptance-session.cli
+npm run cli --silent < examples/flowchart.cli
+```
+
+完整会话有两条有意触发的预期错误；流程图脚本无错误。输出文件、浏览器检查要点和终端操作步骤见 [验收记录](doc/ACCEPTANCE.md)。
+
 ## 检查
 
 ```sh
 npm run check
 ```
 
-该命令运行类型检查、构建与测试。测试包括领域约束、命令解析和真实 CLI 子进程行为；具体结果随每次阶段提交更新至 [项目文档](doc/README.md)。
+该命令运行类型检查、构建与测试。已执行的全套 131 项测试通过，0 失败、0 跳过，覆盖领域约束、命令解析、历史与文件错误、SVG 往返和真实 CLI 子进程。七份示例脚本、真实终端操作及三份 SVG 的 Chrome 预览均已检查；学生已概览结果、反馈导入图说明问题并接受既有测试结论。具体依据见 [项目报告](doc/README.md) 与 [验收记录](doc/ACCEPTANCE.md)。
 
 ## 当前范围
 
-当前范围为画布管理、六种图形创建、结构查看、基础编辑、分组与层级调整、撤销重做，以及上述 SVG 子集的读取与保存。第 6 阶段继续完成题目完整示例、浏览器渲染和最终交付验收。`help` 列出当前可执行的命令。题目中的插件类型 `box` 不属于本次 PJ1 Phase 1 的实现范围。
+当前范围为画布管理、六种图形创建、结构查看、基础编辑、分组与层级调整、撤销重做，以及上述 SVG 子集的读取与保存。`help` 列出十九条可执行命令。题目中的插件类型 `box` 不属于本次 PJ1 Phase 1 的实现范围。
+
+`imported-copy.svg` 中的小圆位于同色矩形内，椭圆部分越界、其余同色重叠，截图中无法分别辨认。验收记录说明了坐标和 `tree/show` 核对方法；这份副本与题目源文件的差异仅为背景矩形补上 ID。
+
+## 交付状态
+
+项目按六阶段推进，前五阶段分别保留独立提交，第六阶段完成最终验收和项目报告。2026-10-18，学生批准核对无误后提交、推送并标记 `final`；本轮最终检查的 131 项测试全部通过。
+
+最终版本使用 [`final` 标签](https://github.com/leoh4mster/svg-editor-cli-pj1/tree/final) 定位，主分支为 `main`；分支与标签应指向同一个最终提交。
 
 - [GitHub 私有仓库](https://github.com/leoh4mster/svg-editor-cli-pj1)
 - [课程要求](phase_cli_1.md)
 - [架构、协作记录、一致性自查与质量保证](doc/README.md)
+- [已填写的验收记录与复现步骤](doc/ACCEPTANCE.md)
 - [开发阶段和后续接续说明](doc/DEVELOPMENT_PLAN.md)
