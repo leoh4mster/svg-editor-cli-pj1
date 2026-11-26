@@ -1,0 +1,7 @@
+{
+  "name": "@svgframe/plugin-dir",
+  "private": true,
+  "type": "module",
+  "main": "./DirPlugin.js",
+  "contributes": { "commands": ["dir"] }
+}
