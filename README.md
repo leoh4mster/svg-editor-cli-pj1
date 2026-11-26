@@ -1,5 +1,7 @@
 # SVG CLI Editor
 
+Phase 2 第一阶段的 SVG 文件标记与原生大纲已实现。参见 [VS Code 扩展启动说明](vscode-extension/README.md) 和[课程报告与运行截图](doc/README.md)。
+
 软件设计课程 PJ1 Phase 1：使用 TypeScript 和面向对象设计实现命令行 SVG 编辑器。
 
 程序支持六种内置图形、十九条命令，完成文档管理、嵌套图形编辑、分组与绘制顺序、撤销重做及 SVG 读写。架构方案、AI 协作过程、一致性自查和质量保证见 [项目报告](doc/README.md)，实际检查结果与复现方法见 [验收记录](doc/ACCEPTANCE.md)。开发增量保存在 [六阶段计划](doc/DEVELOPMENT_PLAN.md) 和 Git 历史中。

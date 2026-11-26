@@ -1,4 +1,61 @@
-# SVG CLI 编辑器项目报告
+# 软件设计 PJ1 项目报告
+
+## Phase 2 · 插件实践与插件式重构
+
+### 六个开发阶段
+
+| 阶段 | 交付节点 | 进度 |
+| --- | --- | --- |
+| 1 | VS Code 的文件标记、原生大纲、截图和复用分析 | 已完成 |
+| 2 | CLI 四个扩展点、双装配与加载器、对照 `final` 的回归、首次生成指标 | 待实施 |
+| 3 | 独立的 `stats`、`dir` 命令插件，目录访问适配器和测试 | 待实施 |
+| 4 | `box` 及属性处理器，两种装配的独立接入差异证据 | 待实施 |
+| 5 | `modified-star` 与 `(box)` 标签共存、保存点与撤销验证 | 待实施 |
+| 6 | 三组会话对照、Git 指标、架构图、ADR、最终验收及 `p2` | 待实施 |
+
+### 第一阶段 · 从 VS Code 原生大纲到 SVG 源码导航
+
+实现之前，先在独立的 VS Code 窗口打开一个嵌套 JSON 文件。内置大纲把 `start` 和 `end` 显示为 `diagram` 的子节点。点击 `start` 后，编辑器跳到第 3 行第 5 列，面包屑也切换到对应属性。SVG 扩展沿用这套交互，把嵌套关系和源码位置交给宿主。扩展的构建、F5 启动和测试命令见[复现说明](../vscode-extension/README.md)，演示使用[示例 SVG](../vscode-extension/sample/example.svg)。
+
+**文件标记。** 下图取自本机 VS Code 1.144.0 的 Extension Development Host。Explorer 中只有文件 `example.svg` 右侧显示 `[]`，目录 `assets.svg` 和普通文件 `notes.txt` 均没有标记。
+
+![Explorer 中 example.svg 带有方括号标记，相邻目录和普通文件右侧为空](images/p2-explorer-badge.png)
+
+**大纲定位。** 下图是在同一窗口点选 `rect#start` 后截取的。左侧显示两层分组和无 id 的 `text`，右侧面包屑指向同一个矩形，状态栏显示第 4 行第 8 列。
+
+![原生大纲选中 rect#start，编辑器定位到第 4 行第 8 列](images/p2-outline-navigation.png)
+
+### 注册、回调与设计模式
+
+| 调用位置 | 插件负责 | VS Code 负责 |
+| --- | --- | --- |
+| 激活入口 | 将两个 provider 注册到宿主，将注册句柄、文件监听器和事件加入 `context.subscriptions` | 激活扩展，按需调用 provider，释放已登记的资源 |
+| Explorer 请求文件装饰 | `SvgBadgeProvider` 检查 URI 后缀，再通过 `workspace.fs.stat` 区分文件和同后缀目录。对于 SVG 文件返回带 `[]` 的 `FileDecoration`；创建或移除条目时通知宿主刷新 | 渲染已有文件行，将装饰附加到该行；文件名及文件内容始终由文件系统维护 |
+| 打开或编辑 SVG 源码 | `SvgOutlineParser` 解析当前内存文本并保留节点的 UTF-16 起止偏移。`SvgOutlineProvider` 把节点转换成宿主的 `DocumentSymbol`。每个节点的 `range` 覆盖整个元素，`selectionRange` 指向开始标签名 | 重新请求符号，显示层级、展开与选中状态，并按位置导航。编辑时 XML 暂不完整，宿主可以显示空大纲 |
+
+经典 **Decorator** 包装实现同一接口的组件，转发原操作并附加行为。这里也通过组合给已有文件行增加显示信息，但 provider 持有的是文件查询能力和变化事件，由 Explorer 主动调用。插件没有包装文件对象；最终合并、绘制装饰的是宿主。源码可对照[激活与注册](../vscode-extension/src/extension.ts)和[文件标记实现](../vscode-extension/src/SvgBadgeProvider.ts)。
+
+**Adapter** 的角色在大纲中更直接。宿主要求的目标接口是 `DocumentSymbolProvider`，被适配对象是输出 XML 名称、源码偏移和子节点的解析器。适配器 `SvgOutlineProvider` 组合这个解析器，再用 `TextDocument.positionAt` 转换坐标，组装宿主接受的符号树。文件标记一侧也会把文件状态转换为宿主要求的装饰结果。两个 provider 共享注册与回调方式，返回值各自解决不同问题。[大纲适配器](../vscode-extension/src/SvgOutlineProvider.ts) · [VS Code API](https://code.visualstudio.com/api/references/vscode-api)
+
+### Phase 1 的复用范围
+
+- **解析**沿用与 CLI 相同版本的 `saxes` 解析库，借助开闭标签事件处理自闭合元素、注释及带引号的属性。CLI 的 `SvgXmlCodec` 服务于可编辑图形导入，会验证支持范围、给无 id 的图形分配 id，转换后也没有保留原始标签的位置。大纲需要展示文件里实际存在的标签，因此使用独立的轻量解析器。[CLI 编解码器](../src/infrastructure/svg/SvgXmlCodec.ts) · [大纲解析器](../vscode-extension/src/SvgOutlineParser.ts)
+- **模型与遍历**沿用父子关系和文档顺序的思路。CLI 的 `Shape` 带有移动、缩放和编辑约束，`TreeFormatter` 输出带连线和几何信息的终端字符串。VS Code 只需要层级、名称和位置，因此扩展使用小型节点结构，并保留根元素以及无 id 的元素。[Phase 1 树格式器](../src/application/formatters/TreeFormatter.ts)
+
+### 验证及 AI 协作记录
+
+学生确认六阶段方案并授权第一阶段。AI 辅助实现扩展、执行测试、操作真实界面并整理证据。本阶段一次具体修正来自宿主测试：最初的断言要求符号查询在无结果时严格返回空数组，实际版本的 `vscode.executeDocumentSymbolProvider` 返回了 `undefined`。测试改为验证没有符号，并继续对同一文档输入合法 XML，检查节点恢复。解析器本身返回空数组的契约仍由单元测试直接验证。
+
+| 2026-11-26 的检查 | 实际结果 |
+| --- | --- |
+| 解析器单元测试 | 4 项通过。覆盖嵌套分组、匿名叶子、顺序、CRLF、多行标签、非 BMP 字符、无效 XML 及后续恢复 |
+| 真实扩展宿主集成测试 | 通过。检查三类目录项、文件字节、符号层级、定位范围；在同一未保存文档连续输入有效、残缺、有效的 XML，验证符号随编辑变化 |
+| 开发宿主界面 | 文件装饰和点击定位见上图。实测 XML 多写一个 `>` 时大纲提示无符号；移除后出现 `svg → g#live-demo`。最后恢复示例文件 |
+| 原 CLI 回归 | 仓库根目录执行 `npm run check`，131 项通过，0 项失败 |
+
+---
+
+## Phase 1 · SVG CLI 编辑器项目报告
 
 作者：周乐涵。课程：软件设计，PJ1 Phase 1。文档整理日期：2026-10-18。
 

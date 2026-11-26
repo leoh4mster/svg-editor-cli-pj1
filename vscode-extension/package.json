@@ -1,0 +1,23 @@
+{
+  "name": "pj1-svg-outline",
+  "displayName": "PJ1 SVG Outline",
+  "description": "SVG file badges and source navigation in the native Outline.",
+  "version": "0.1.0",
+  "publisher": "leoh4mster",
+  "private": true,
+  "engines": { "vscode": "^1.96.0" },
+  "activationEvents": ["onStartupFinished", "onLanguage:xml"],
+  "main": "./dist/src/extension.js",
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "npm run build && node --test dist/test/SvgOutlineParser.test.js",
+    "test:host": "npm run build && node test/run-host.cjs"
+  },
+  "dependencies": { "saxes": "6.0.0" },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "@types/vscode": "1.96.0",
+    "@vscode/test-electron": "2.5.2",
+    "typescript": "5.9.3"
+  }
+}
