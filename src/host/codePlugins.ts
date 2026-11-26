@@ -1,4 +1,8 @@
+import { createRequire } from "node:module";
+import stats from "../../plugins/stats/StatsPlugin.js";
 import type { CodePlugin } from "./loader/PluginLoader.js";
 
-// Optional code assembly, in activation order. Config assembly reads the JSON list instead.
-export const codePlugins: readonly CodePlugin[] = [];
+const manifest = createRequire(import.meta.url);
+export const codePlugins: readonly CodePlugin[] = [
+  { plugin: stats, manifest: manifest("../../plugins/stats/package.json") },
+];
