@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 1 | VS Code 的文件标记、原生大纲、截图和复用分析 | 已完成 |
 | 2 | CLI 四个扩展点、双装配与加载器、对照 `final` 的回归、首次生成指标 | 已完成 |
-| 3 | 独立的 `stats`、`dir` 命令插件，目录访问适配器和测试 | 待实施 |
+| 3 | 独立的 `stats`、`dir` 命令插件，目录访问适配器和测试 | 已完成 |
 | 4 | `box` 及属性处理器，两种装配的独立接入差异证据 | 待实施 |
 | 5 | `modified-star` 与 `(box)` 标签共存、保存点与撤销验证 | 待实施 |
 | 6 | 三组会话对照、Git 指标、架构图、ADR、最终验收及 `p2` | 待实施 |
@@ -78,12 +78,12 @@ left to right direction
 
 #### 扩展点清单
 
-以下的 `probe` 是集成测试使用的插件，同时提供四种扩展；常规启动只启用内置包。正式的命令、复合图形和标签按后续阶段分别接入。[公开接口](../src/extensions/Contracts.ts) · [测试插件](../test/fixtures/probe/ProbePlugin.ts)
+以下的 `probe` 是集成测试使用的插件，同时提供四种扩展；第二阶段提交的常规入口只启用内置包。正式的命令、复合图形和标签按后续阶段分别接入。[公开接口](../src/extensions/Contracts.ts) · [测试插件](../test/fixtures/probe/ProbePlugin.ts)
 
 | 接口与职责 | 运行时调用点 | 本阶段实现及禁用行为 | 契约与错误 |
 | --- | --- | --- | --- |
 | `ShapeProvider` 提供创建参数说明、构造及 SVG 读回 | [ShapeFactory.create / svgProvider](../src/application/ShapeFactory.ts) 查注册名；[SvgXmlCodec.buildShape](../src/infrastructure/svg/SvgXmlCodec.ts) 调用 `read` | `BasicShapeProvider` 的六个实例；测试用 `ProbeProvider`。禁用可选扩展仍能使用全部 Phase 1 图形 | 未注册的创建类型报 `unknown shape type: … (is the plugin loaded?)`。创建和读回都核对返回 id。读回最先按匹配 SVG 标签的 `data-kind` 选提供者，无法匹配时用原标签的提供者，例如将带标识的分组读作普通 `g` |
-| `Command` 提供语法、帮助及执行方法 | [CommandRegistry.execute / describeCommands](../src/cli/CommandRegistry.ts) | 十九个内置命令类及测试用 `ProbeCommand`。未安装的命令从帮助中消失，执行时报 `unknown command: <name>` | 由注册项提供用法、说明和执行方法，参数校验由命令负责。缺少方法时加载失败，同类重名报 `duplicate registration: commands/<name>` |
+| `Command` 提供语法、帮助及执行方法 | [CommandRegistry.execute / describeCommands](../src/cli/CommandRegistry.ts) | 十九个内置命令类、独立的 `StatsCommand`、`DirCommand` 及测试用 `ProbeCommand`。未安装的命令从帮助中消失，执行时报 `unknown command: <name>` | 由注册项提供用法、说明和执行方法，参数校验由命令负责。缺少方法时加载失败，同类重名报 `duplicate registration: commands/<name>` |
 | `TreeDecorator` 返回按节点 id 索引的行尾标签 | [TreeFormatter.format](../src/application/formatters/TreeFormatter.ts) 在每次树渲染时调用各实例的 `labels` | `ProbeLabel` 验证根行、容器行、子树及保存点。关闭时沿用原树输出 | 每个标签为一段非空单行文字，根行的键是 `undefined`，多标签按注册顺序拼接。空标签或换行报 `invalid tree label: <name>`。提供给装饰器的当前文档和保存点为隔离副本 |
 | `AttributeHandler` 定义属性在目标图形上的修改方式 | [AttributeDispatcher.apply](../src/application/AttributeDispatcher.ts) 由内置 `SetCommand` 在编辑草稿上调用 | `ProbeAttribute` 用一次 `set` 修改两个位置。没有匹配时执行原图形的 `withAttribute` 规则，未知属性报 `unknown attribute: <attr>` | `handles` 只判断，恰好一个命中时调用 `apply`，返回本次编辑的消息。多匹配报 `ambiguous attribute handler: <id>/<attr>`。处理失败丢弃草稿并保留原历史 |
 
@@ -126,6 +126,28 @@ node scripts/verify-compat.mjs
 ```
 
 **协作检查。** 本阶段 AI 辅助重构及编写故障测试。检查加载器时，专门写了一个入口存在、内部依赖缺失的测试包，核实错误归因；另一个测试包在激活时自行捕获重名错误，验证被污染的批次仍无法发布。架构指标从已提交的 Git 源码生成，按内核、装配处、插件分别计算，VS Code 单独列出。[首次指标报告](../docs/metrics/stage-2.md) · [指标复现方法](../docs/metrics/README.md)
+
+### 第三阶段 · 统计与目录命令
+
+两个包各自在清单中声明一条命令。代码入口和仓库的 JSON 配置均按 `stats`、`dir` 的顺序加载相同的实现。要单独关闭其中一个，可以将对应配置项设为 `"enabled": false`，再用 `--config plugins.config.json` 启动。被关闭的命令从帮助中消失，执行时由内核报告未知命令。[代码装配](../src/host/codePlugins.ts) · [配置装配](../plugins.config.json)
+
+**统计语义。** `stats` 无参数，读取当前文档，依照画布子节点顺序做前序遍历。用 `isContainer` 区分容器与叶子，根画布不参与计数。叶子按类型首次出现的顺序输出，因此嵌套组中的文字可以排在顶层矩形之前。新建空画布输出 `(total 0, containers 0)`。独立测试用自定义复合容器验证其子节点参与统计，第四阶段再随实际 `box` 接入复验。[StatsCommand](../plugins/stats/StatsCommand.ts) · [独立测试](../test/StatsCommand.test.ts)
+
+**目录访问适配器。** 客户端 `DirCommand` 依赖目标接口 `DirectoryReader`，调用 `currentPath()` 取得目录，再调用 `list(path)`。具体适配器 `NodeDirectoryReader` 组合 Node 的 `process.cwd()` 和 `fs.readdirSync`，将返回的 Dirent 转成名称及类型。插件激活时注入适配器，命令自行校验参数、稳定排序、格式化和转换错误。查询不需要打开画布，也不调用编辑会话。[目标接口](../plugins/dir/DirectoryReader.ts) · [Node 适配器](../plugins/dir/NodeDirectoryReader.ts) · [目录命令](../plugins/dir/DirCommand.ts)
+
+目录排在前面，其余条目排在后面，每组均按名称的 UTF-16 码元升序排列。以点开头的名字照常显示。`[LINK]` 表示符号链接（含失效链接），`[OTHER]` 表示其他特殊条目。目录和链接均只列出本项。标记与名称之间有两个空格；名称内的反斜杠、回车及换行分别显示为转义文本，确保一个条目只占一行。空目录输出 `(empty directory)`。
+
+**验收记录。** `npm run check` 共 150 项通过。固定临时目录中准备 `docs/source.svg`（复制自 `examples/imported.svg`）和空文件 `.settings`。两次真实 CLI 进程使用相同工作目录、相同输入、相同插件集合，stdout 分别逐字节匹配同一预期文件，stderr 均为空，日志由父进程捕获。另在只可进入、不可列举的临时目录运行 CLI，确认 `dir` 报出目标路径后，仍能成功执行原先待重做的操作。关闭可选插件后，七份 Phase 1 会话的两条输出流及 SVG 字节继续与 `final` 一致。[会话输入](transcript/command-plugins.txt) · [预期输出](transcript/command-plugins.stdout) · [双装配测试](../test/CommandPluginsCli.test.ts)
+
+**协作检查与提交依据。** 本阶段 AI 辅助实现和运行测试，专门用 `read docs/source.svg` 后的 `dir` 检查是否误列了 SVG 所在目录，并用顺序相反的测试替身输入检查排序。提交 `0cf5728` 通过代码装配接入统计插件，`2757756` 通过配置接入目录插件。分别运行 `git show --name-status <提交>` 可检查接入边界；第三个阶段内提交对齐两种装配，补齐共同会话和报告。
+
+复现本阶段的插件测试可在仓库根目录执行以下命令。
+
+```sh
+npm run build
+node --test dist/test/StatsCommand.test.js dist/test/DirCommand.test.js dist/test/CommandPluginsCli.test.js
+node scripts/verify-compat.mjs
+```
 
 ---
 

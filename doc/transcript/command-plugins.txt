@@ -1,0 +1,16 @@
+# Run in a directory containing docs/source.svg and .settings.
+dir
+init
+stats
+create g outer
+create g inner in outer
+create text title 0 0 "Start" in inner
+create rect r 0 0 2 1
+create text caption 1 1 "End"
+stats
+undo
+stats
+redo
+read docs/source.svg
+stats
+dir

@@ -1,0 +1,18 @@
+[DIR]  docs
+[FILE]  .settings
+canvas 800x600 created
+(total 0, containers 0)
+g#outer created
+g#inner created in g#outer
+text#title created in g#inner
+rect#r created
+text#caption created
+text: 2  rect: 1  (total 3, containers 2)
+undone: text#caption created
+text: 1  rect: 1  (total 2, containers 2)
+redone: text#caption created
+warning: assigned id rect1 to unnamed <rect>
+read docs/source.svg (7 elements)
+rect: 2  text: 1  circle: 2  ellipse: 1  (total 6, containers 1)
+[DIR]  docs
+[FILE]  .settings

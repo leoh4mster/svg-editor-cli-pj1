@@ -1,6 +1,6 @@
 # SVG CLI Editor
 
-Phase 2 已完成 VS Code 扩展和 CLI 插件框架。可用 `npm run cli -- --config plugins.config.json` 启动配置装配，或用 `npm run cli -- --no-plugins` 回放 Phase 1 行为。[扩展启动说明](vscode-extension/README.md) · [框架、扩展点及运行截图](doc/README.md)
+Phase 2 已完成 VS Code 扩展、CLI 插件框架及两个命令插件。默认启动时，`stats` 统计叶子图形与容器，`dir` 列出进程当前目录的直接子项。可用 `npm run cli -- --config plugins.config.json` 启动配置装配，或用 `npm run cli -- --no-plugins` 回放 Phase 1 行为。[扩展启动说明](vscode-extension/README.md) · [框架、扩展点及运行截图](doc/README.md)
 
 软件设计课程 PJ1 Phase 1：使用 TypeScript 和面向对象设计实现命令行 SVG 编辑器。
 
@@ -15,10 +15,12 @@ npm ci
 npm run cli
 ```
 
-交互终端显示 `svg>` 提示符。输入结束时退出：macOS / Linux 使用 `Ctrl+D`，也可以使用 `Ctrl+C`。当前支持：
+交互终端显示 `svg>` 提示符。输入结束时退出：macOS / Linux 使用 `Ctrl+D`，也可以使用 `Ctrl+C`。默认装配支持：
 
 ```text
 help
+stats
+dir
 init [w] [h]
 read <file.svg>
 save [file.svg]
