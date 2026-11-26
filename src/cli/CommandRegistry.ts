@@ -4,7 +4,7 @@ import type { CommandCatalog } from "../application/ports/CommandCatalog.js";
 import { EditorError } from "../domain/EditorError.js";
 
 export class CommandRegistry implements CommandCatalog {
-  private readonly commands = new Map<string, Command>();
+  constructor(private readonly commands = new Map<string, Command>()) {}
 
   register(name: string, command: Command): void {
     if (this.commands.has(name)) {

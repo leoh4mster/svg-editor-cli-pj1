@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ShapeFactory } from "../src/application/ShapeFactory.js";
+import { builtinFactory } from "./support/builtinFactory.js";
 import { SvgDocument } from "../src/domain/SvgDocument.js";
 import type { Shape } from "../src/domain/shapes/Shape.js";
 
-const factory = new ShapeFactory();
+const factory = builtinFactory();
 
 function snapshot(document: SvgDocument): string {
   return JSON.stringify({

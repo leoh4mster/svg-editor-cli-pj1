@@ -2,15 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { EditorSession } from "../src/application/EditorSession.js";
-import { ShapeFactory } from "../src/application/ShapeFactory.js";
+import { builtinFactory } from "./support/builtinFactory.js";
 import { SvgReadResult } from "../src/application/SvgReadResult.js";
-import { CreateCommand } from "../src/application/commands/CreateCommand.js";
-import { GroupCommand } from "../src/application/commands/GroupCommand.js";
+import { CreateCommand } from "../plugins/builtin/commands/CreateCommand.js";
+import { GroupCommand } from "../plugins/builtin/commands/GroupCommand.js";
 import type { SvgDocument } from "../src/domain/SvgDocument.js";
 import type { Shape } from "../src/domain/shapes/Shape.js";
 import { SvgXmlCodec } from "../src/infrastructure/svg/SvgXmlCodec.js";
 
-const codec = new SvgXmlCodec(new ShapeFactory());
+const codec = new SvgXmlCodec(builtinFactory());
 const namespace = 'xmlns="http://www.w3.org/2000/svg"';
 
 function shapeState(shape: Shape): unknown {
@@ -152,7 +152,7 @@ test("root metadata and shape extras survive transformations, hierarchy edits an
     draft.moveShape("inner", 10, 20);
     draft.scaleShape("inner", 2);
     draft.setAttribute("r", "stroke-width", "0");
-    draft.groupShapes("pair", ["r", "t"]);
+    draft.groupShapes(builtinFactory().create("g", "pair", []), ["r", "t"]);
     draft.bringToFront("r");
     draft.addTo("outer", "pair");
     draft.ungroupShape("pair");
@@ -182,8 +182,8 @@ test("root metadata and shape extras survive transformations, hierarchy edits an
 test("imported root ids remain reserved when create and group add nodes", () => {
   const session = new EditorSession();
   session.loadDocument(codec.decode(`<svg ${namespace} id="root"><circle id="a"/><circle id="b"/></svg>`).copyDocument(), "root.svg");
-  assert.throws(() => new CreateCommand(new ShapeFactory()).execute(["g", "root"], session), { message: "id already exists: root" });
-  assert.throws(() => new GroupCommand().execute(["root", "a", "b"], session), { message: "id already exists: root" });
+  assert.throws(() => new CreateCommand(builtinFactory()).execute(["g", "root"], session), { message: "id already exists: root" });
+  assert.throws(() => new GroupCommand(builtinFactory()).execute(["root", "a", "b"], session), { message: "id already exists: root" });
   assert.match(codec.encode(session.requireDocument()), /id="root"/);
 });
 

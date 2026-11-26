@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { EditorSession } from "../src/application/EditorSession.js";
-import { CanvasCommand } from "../src/application/commands/CanvasCommand.js";
-import { InitCommand } from "../src/application/commands/InitCommand.js";
+import { CanvasCommand } from "../plugins/builtin/commands/CanvasCommand.js";
+import { InitCommand } from "../plugins/builtin/commands/InitCommand.js";
 
 test("init supports defaults, width with default height, and explicit dimensions", () => {
   const command = new InitCommand();

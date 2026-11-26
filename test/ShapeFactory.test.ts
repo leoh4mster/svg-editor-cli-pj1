@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ShapeFactory } from "../src/application/ShapeFactory.js";
+import { builtinFactory } from "./support/builtinFactory.js";
 
-const factory = new ShapeFactory();
+const factory = builtinFactory();
 
 test("the built-in factory creates exactly the six required shape types", () => {
   const cases: Array<[string, string[], RegExp]> = [

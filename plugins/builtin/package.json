@@ -1,0 +1,36 @@
+{
+  "name": "@svgframe/builtin",
+  "private": true,
+  "type": "module",
+  "contributes": {
+    "shapes": [
+      "rect",
+      "circle",
+      "ellipse",
+      "line",
+      "text",
+      "g"
+    ],
+    "commands": [
+      "help",
+      "init",
+      "canvas",
+      "read",
+      "save",
+      "create",
+      "move",
+      "scale",
+      "set",
+      "delete",
+      "group",
+      "ungroup",
+      "addto",
+      "front",
+      "back",
+      "undo",
+      "redo",
+      "tree",
+      "show"
+    ]
+  }
+}

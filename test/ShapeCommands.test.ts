@@ -1,14 +1,16 @@
+import { ShowFormatter } from "../src/application/formatters/ShowFormatter.js";
+import { TreeFormatter } from "../src/application/formatters/TreeFormatter.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { EditorSession } from "../src/application/EditorSession.js";
-import { ShapeFactory } from "../src/application/ShapeFactory.js";
-import { CreateCommand } from "../src/application/commands/CreateCommand.js";
-import { ShowCommand } from "../src/application/commands/ShowCommand.js";
-import { TreeCommand } from "../src/application/commands/TreeCommand.js";
+import { builtinFactory } from "./support/builtinFactory.js";
+import { CreateCommand } from "../plugins/builtin/commands/CreateCommand.js";
+import { ShowCommand } from "../plugins/builtin/commands/ShowCommand.js";
+import { TreeCommand } from "../plugins/builtin/commands/TreeCommand.js";
 
-const create = new CreateCommand(new ShapeFactory());
-const tree = new TreeCommand();
-const show = new ShowCommand();
+const create = new CreateCommand(builtinFactory());
+const tree = new TreeCommand(new TreeFormatter());
+const show = new ShowCommand(new ShowFormatter());
 
 test("create returns the required feedback and supports all six types within nested groups", () => {
   const session = new EditorSession();

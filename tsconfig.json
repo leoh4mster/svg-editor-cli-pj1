@@ -16,7 +16,8 @@
     "forceConsistentCasingInFileNames": true,
     "verbatimModuleSyntax": true,
     "sourceMap": true,
+    "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": ["plugins/**/*.ts", "plugins/**/package.json", "src/**/*.ts", "test/**/*.ts"]
 }

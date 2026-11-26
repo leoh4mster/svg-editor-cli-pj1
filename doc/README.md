@@ -7,7 +7,7 @@
 | 阶段 | 交付节点 | 进度 |
 | --- | --- | --- |
 | 1 | VS Code 的文件标记、原生大纲、截图和复用分析 | 已完成 |
-| 2 | CLI 四个扩展点、双装配与加载器、对照 `final` 的回归、首次生成指标 | 待实施 |
+| 2 | CLI 四个扩展点、双装配与加载器、对照 `final` 的回归、首次生成指标 | 已完成 |
 | 3 | 独立的 `stats`、`dir` 命令插件，目录访问适配器和测试 | 待实施 |
 | 4 | `box` 及属性处理器，两种装配的独立接入差异证据 | 待实施 |
 | 5 | `modified-star` 与 `(box)` 标签共存、保存点与撤销验证 | 待实施 |
@@ -52,6 +52,80 @@
 | 真实扩展宿主集成测试 | 通过。检查三类目录项、文件字节、符号层级、定位范围；在同一未保存文档连续输入有效、残缺、有效的 XML，验证符号随编辑变化 |
 | 开发宿主界面 | 文件装饰和点击定位见上图。实测 XML 多写一个 `>` 时大纲提示无符号；移除后出现 `svg → g#live-demo`。最后恢复示例文件 |
 | 原 CLI 回归 | 仓库根目录执行 `npm run check`，131 项通过，0 项失败 |
+
+
+### 第二阶段 · 可扩展的 CLI 框架
+
+Phase 1 的 `main.ts` 直接登记十九条命令，`ShapeFactory` 自带六种构造配方。现在启动入口创建宿主，由宿主先加载内置包，再加载所选的可选插件。十九个具体命令类和六种图形的提供者位于 `plugins/builtin/`。领域图形、文档和编辑事务继续由内核维护。公开接口集中在 `src/extensions/`。运行时代码的依赖方向如下。
+
+```plantuml
+@startuml
+left to right direction
+[main] --> [EditorHost]
+[EditorHost] --> [内置插件]
+[EditorHost] --> [插件加载器]
+[插件加载器] --> [注册事务]
+[注册事务] --> [扩展点接口]
+[内置插件] --> [公开插件 API]
+[可选插件] --> [公开插件 API]
+[公开插件 API] --> [扩展点接口]
+[公开插件 API] --> [领域模型]
+[命令分发与应用服务] --> [扩展点接口]
+[SVG 编解码器] --> [图形工厂]
+[图形工厂] --> [扩展点接口]
+@enduml
+```
+
+#### 扩展点清单
+
+以下的 `probe` 是集成测试使用的插件，同时提供四种扩展；常规启动只启用内置包。正式的命令、复合图形和标签按后续阶段分别接入。[公开接口](../src/extensions/Contracts.ts) · [测试插件](../test/fixtures/probe/ProbePlugin.ts)
+
+| 接口与职责 | 运行时调用点 | 本阶段实现及禁用行为 | 契约与错误 |
+| --- | --- | --- | --- |
+| `ShapeProvider` 提供创建参数说明、构造及 SVG 读回 | [ShapeFactory.create / svgProvider](../src/application/ShapeFactory.ts) 查注册名；[SvgXmlCodec.buildShape](../src/infrastructure/svg/SvgXmlCodec.ts) 调用 `read` | `BasicShapeProvider` 的六个实例；测试用 `ProbeProvider`。禁用可选扩展仍能使用全部 Phase 1 图形 | 未注册的创建类型报 `unknown shape type: … (is the plugin loaded?)`。创建和读回都核对返回 id。读回最先按匹配 SVG 标签的 `data-kind` 选提供者，无法匹配时用原标签的提供者，例如将带标识的分组读作普通 `g` |
+| `Command` 提供语法、帮助及执行方法 | [CommandRegistry.execute / describeCommands](../src/cli/CommandRegistry.ts) | 十九个内置命令类及测试用 `ProbeCommand`。未安装的命令从帮助中消失，执行时报 `unknown command: <name>` | 由注册项提供用法、说明和执行方法，参数校验由命令负责。缺少方法时加载失败，同类重名报 `duplicate registration: commands/<name>` |
+| `TreeDecorator` 返回按节点 id 索引的行尾标签 | [TreeFormatter.format](../src/application/formatters/TreeFormatter.ts) 在每次树渲染时调用各实例的 `labels` | `ProbeLabel` 验证根行、容器行、子树及保存点。关闭时沿用原树输出 | 每个标签为一段非空单行文字，根行的键是 `undefined`，多标签按注册顺序拼接。空标签或换行报 `invalid tree label: <name>`。提供给装饰器的当前文档和保存点为隔离副本 |
+| `AttributeHandler` 定义属性在目标图形上的修改方式 | [AttributeDispatcher.apply](../src/application/AttributeDispatcher.ts) 由内置 `SetCommand` 在编辑草稿上调用 | `ProbeAttribute` 用一次 `set` 修改两个位置。没有匹配时执行原图形的 `withAttribute` 规则，未知属性报 `unknown attribute: <attr>` | `handles` 只判断，恰好一个命中时调用 `apply`，返回本次编辑的消息。多匹配报 `ambiguous attribute handler: <id>/<attr>`。处理失败丢弃草稿并保留原历史 |
+
+#### 插件怎样装入
+
+在仓库根目录构建后，下面三个入口分别使用代码装配、配置装配和仅内置能力。
+
+```sh
+npm ci
+npm run build
+node dist/src/main.js
+node dist/src/main.js --config plugins.config.json
+node dist/src/main.js --no-plugins
+```
+
+**代码装配**由 [codePlugins.ts](../src/host/codePlugins.ts) 提供有序项 `{ manifest, plugin, options? }`。插件包提供清单和带 `activate(context, options)` 的默认导出。**配置装配**从仓库根的 [plugins.config.json](../plugins.config.json) 读取 `plugins` 数组。每项有字符串 `module`，以及可选的布尔值 `enabled` 和对象 `options`。相对路径以配置所在目录为基准；包名使用该目录的 Node ESM 解析规则，支持 `exports.import`。相对目录可提供有名包的 `exports`，或以 `main` 指定入口，缺省为 `index.js`。配置按数组顺序加载，禁用项直接跳过，缺省 options 为空对象。
+
+每个包通过 `package.json` 的 `contributes` 声明四类名称列表。插件在激活中调用 `context.register(类别, 名称, 实例)`。代码和配置装配共同进入 [PluginLoader.activate](../src/host/loader/PluginLoader.ts)，使用同一 [Registration.commit](../src/host/loader/Registration.ts)。例如，要试用测试包，可在仓库根新建临时配置并写入以下内容，然后把配置路径传给 `--config`。执行 `probe-info` 应输出「装配一致」。源码树下的测试清单随构建一起复制到 `dist`。
+
+```json
+{
+  "plugins": [
+    { "module": "./dist/test/fixtures/probe", "options": { "message": "装配一致" } }
+  ]
+}
+```
+
+#### 本阶段决策记录与验证
+
+- **属性修改的事务边界。** 处理器取得公开的目标图形和本次 `executeEdit` 的草稿文档，通过文档方法修改子部件。多个处理器命中时拒绝整次修改，使新增插件不会静默改变已有行为。只有处理器成功返回且能复制完整草稿才写入历史。测试先制造一个可重做的操作，再让处理器修改子元素后抛错，核对文档和原 redo 均保留。
+- **清单校验的时机。** 整份配置先校验结构，再依序解析插件。每个插件使用独立的临时注册表。激活成功后比较四类名称集合，全部相符后一次发布。重复注册、清单不符或抛错都会舍弃这一个插件的所有注册。加载结束后保留的注册上下文也不能追加能力。读取配置失败或格式错误时输出 `error: invalid plugin config` 并启动内置能力。
+- **包定位与执行分开。** 找不到顶层模块输出 `error: plugin not found: <module>`，缺默认导出输出 `error: plugin has no default export: <module>`；已定位包的求值、依赖导入或激活出错则输出 `error: plugin failed to activate: <name> (<reason>)`。清单不符会列出 declared 与 registered 两组名称。这些诊断写入 stderr，随后继续处理配置中的下一项。[加载器独立测试](../test/PluginLoader.test.ts)
+- **读回和树标签的准备。** 复合类型可指定实际的 SVG 标签，按需取得已读回的子元素，并声明是否支持解组。保存点取自成功的初始化、读取或保存；装饰器各自持有计算标签所需的状态。测试包的复合图形成功保存读回，禁用测试插件后，同一文件作为普通分组读入并保留子节点。[四扩展点集成测试](../test/Framework.test.ts)
+
+**兼容性。** `npm run check` 的 142 项测试通过，其中 131 项来自 Phase 1，原断言保留，单元测试按新位置引用命令并显式装入内置图形。额外执行下面的两条命令，会从 Git 的 `final` 版本重新构建 CLI，分别使用三份隔离工作目录回放同一输入。7 份原会话的 stdout、stderr 和 SVG 文件内容均逐字节相同。题目 §6 的输入和两条输出流另存在 [doc/transcript](transcript/)。
+
+```sh
+npm run build
+node scripts/verify-compat.mjs
+```
+
+**协作检查。** 本阶段 AI 辅助重构及编写故障测试。检查加载器时，专门写了一个入口存在、内部依赖缺失的测试包，核实错误归因；另一个测试包在激活时自行捕获重名错误，验证被污染的批次仍无法发布。架构指标从已提交的 Git 源码生成，按内核、装配处、插件分别计算，VS Code 单独列出。[指标复现方法](../docs/metrics/README.md)
 
 ---
 

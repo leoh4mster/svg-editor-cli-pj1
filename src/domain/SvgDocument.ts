@@ -1,5 +1,4 @@
 import { EditorError } from "./EditorError.js";
-import { Group } from "./shapes/Group.js";
 import type { Shape } from "./shapes/Shape.js";
 
 export class SvgDocument {
@@ -106,8 +105,12 @@ export class SvgDocument {
     return shape;
   }
 
-  groupShapes(newId: string, ids: readonly string[]): Shape {
-    const group = new Group(newId);
+  groupShapes(group: Shape, ids: readonly string[]): Shape {
+    const newId = group.id;
+    group.assertDetached();
+    if (!group.isContainer || group.children.length) {
+      throw new EditorError("group destination must be an empty container");
+    }
     if (this.shapesById.has(newId) || this.rootMetadata.get("id") === newId) {
       throw new EditorError(`id already exists: ${newId}`);
     }
@@ -165,6 +168,9 @@ export class SvgDocument {
     const group = this.findShape(id);
     if (!group.isContainer) {
       throw new EditorError(`not a container: ${id}`);
+    }
+    if (!group.canUngroup) {
+      throw new EditorError(`cannot ungroup composite shape: ${id}`);
     }
     const parent = this.parentsById.get(id);
     if (parent === undefined) {

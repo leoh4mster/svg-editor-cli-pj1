@@ -5,12 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { ShapeFactory } from "../src/application/ShapeFactory.js";
+import { builtinFactory } from "./support/builtinFactory.js";
 import { SvgXmlCodec } from "../src/infrastructure/svg/SvgXmlCodec.js";
 
 const entryPoint = fileURLToPath(new URL("../src/main.js", import.meta.url));
 const imported = fileURLToPath(new URL("../../examples/imported.svg", import.meta.url));
-const codec = new SvgXmlCodec(new ShapeFactory());
+const codec = new SvgXmlCodec(builtinFactory());
 
 function replay(directory: string, input: string) {
   const result = spawnSync(process.execPath, [entryPoint], {

@@ -1,17 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { EditorSession } from "../src/application/EditorSession.js";
-import { ShapeFactory } from "../src/application/ShapeFactory.js";
+import { builtinFactory } from "./support/builtinFactory.js";
 import { SvgReadResult } from "../src/application/SvgReadResult.js";
-import { CreateCommand } from "../src/application/commands/CreateCommand.js";
-import { ReadCommand } from "../src/application/commands/ReadCommand.js";
-import { SaveCommand } from "../src/application/commands/SaveCommand.js";
+import { CreateCommand } from "../plugins/builtin/commands/CreateCommand.js";
+import { ReadCommand } from "../plugins/builtin/commands/ReadCommand.js";
+import { SaveCommand } from "../plugins/builtin/commands/SaveCommand.js";
 import type { SvgCodec } from "../src/application/ports/SvgCodec.js";
 import type { TextFileStore } from "../src/application/ports/TextFileStore.js";
 import { SvgXmlCodec } from "../src/infrastructure/svg/SvgXmlCodec.js";
 
-const codec = new SvgXmlCodec(new ShapeFactory());
-const create = new CreateCommand(new ShapeFactory());
+const codec = new SvgXmlCodec(builtinFactory());
+const create = new CreateCommand(builtinFactory());
 const imported = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="30"><g id="g"><rect id="r" x="1" y="2" width="3" height="4"/></g></svg>';
 
 function memoryFiles() {

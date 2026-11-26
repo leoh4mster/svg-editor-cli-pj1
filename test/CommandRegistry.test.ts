@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { EditorSession } from "../src/application/EditorSession.js";
-import { CanvasCommand } from "../src/application/commands/CanvasCommand.js";
-import { HelpCommand } from "../src/application/commands/HelpCommand.js";
-import { InitCommand } from "../src/application/commands/InitCommand.js";
+import { CanvasCommand } from "../plugins/builtin/commands/CanvasCommand.js";
+import { HelpCommand } from "../plugins/builtin/commands/HelpCommand.js";
+import { InitCommand } from "../plugins/builtin/commands/InitCommand.js";
 import { CommandRegistry } from "../src/cli/CommandRegistry.js";
 
 test("the registry delegates to a registered command", () => {

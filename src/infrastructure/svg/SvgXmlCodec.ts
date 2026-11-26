@@ -170,17 +170,24 @@ export class SvgXmlCodec implements SvgCodec {
       reservedIds.add(id);
       warnings.push(`warning: assigned id ${id} to unnamed <${element.type}>`);
     }
-    let shape = this.factory.fromSvg(element.type, id, attributes, element.text);
-    if (shape.textContent === undefined && /[^ \t\r\n]/u.test(element.text)) {
-      this.invalid(`text is not supported inside <${element.type}>`);
-    }
-    if (!shape.isContainer && element.children.length !== 0) {
-      this.invalid(`child elements are not supported inside <${element.type}>`);
-    }
-    if (shape.isContainer) {
-      const children = element.children.map((child) => this.buildShape(child, reservedIds, counters, warnings));
-      shape = shape.withChildren(children);
-    }
+    const provider = this.factory.svgProvider(element.type, attributes.get("data-kind"));
+    // A provider may need its complete children to construct a composite. Defer parsing
+    // them so ordinary malformed parents keep Phase 1's error and warning order.
+    let children: readonly Shape[] | undefined;
+    const readChildren = (): readonly Shape[] => {
+      if (children) return children;
+      if (!provider.acceptsText && /[^ \t\r\n]/u.test(element.text)) {
+        this.invalid(`text is not supported inside <${element.type}>`);
+      }
+      if (!provider.container && element.children.length !== 0) {
+        this.invalid(`child elements are not supported inside <${element.type}>`);
+      }
+      children = element.children.map(child => this.buildShape(child, reservedIds, counters, warnings));
+      return children;
+    };
+    const shape = provider.read(id, attributes, element.text, readChildren);
+    readChildren();
+    if (shape?.id !== id) this.invalid(`provider must retain shape id: ${id}`);
     return shape;
   }
 
@@ -217,23 +224,23 @@ export class SvgXmlCodec implements SvgCodec {
   }
 
   private encodeShape(shape: Shape, depth: number): string {
-    this.validateName(shape.type);
+    this.validateName(shape.svgTag);
     const indent = "  ".repeat(depth);
     const attributes = this.encodeAttributes(shape.svgAttributes);
     if (shape.textContent !== undefined) {
       if (shape.children.length !== 0) {
-        this.invalid(`child elements are not supported inside <${shape.type}>`);
+        this.invalid(`child elements are not supported inside <${shape.svgTag}>`);
       }
-      return `${indent}<${shape.type}${attributes}>${this.encodeText(shape.textContent)}</${shape.type}>`;
+      return `${indent}<${shape.svgTag}${attributes}>${this.encodeText(shape.textContent)}</${shape.svgTag}>`;
     }
     if (shape.children.length === 0) {
-      return `${indent}<${shape.type}${attributes}/>`;
+      return `${indent}<${shape.svgTag}${attributes}/>`;
     }
     if (!shape.isContainer) {
-      this.invalid(`child elements are not supported inside <${shape.type}>`);
+      this.invalid(`child elements are not supported inside <${shape.svgTag}>`);
     }
     const children = shape.children.map((child) => this.encodeShape(child, depth + 1));
-    return `${indent}<${shape.type}${attributes}>\n${children.join("\n")}\n${indent}</${shape.type}>`;
+    return `${indent}<${shape.svgTag}${attributes}>\n${children.join("\n")}\n${indent}</${shape.svgTag}>`;
   }
 
   private encodeAttributes(attributes: ReadonlyMap<string, string>): string {

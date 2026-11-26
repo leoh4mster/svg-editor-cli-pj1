@@ -19,6 +19,7 @@
     "typescript": "5.9.3"
   },
   "dependencies": {
+    "import-meta-resolve": "4.2.0",
     "saxes": "6.0.0",
     "xmlchars": "2.2.0"
   }

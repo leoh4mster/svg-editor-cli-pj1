@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { EditorSession } from "../src/application/EditorSession.js";
-import { ShapeFactory } from "../src/application/ShapeFactory.js";
+import { builtinFactory } from "./support/builtinFactory.js";
 import { SvgDocument } from "../src/domain/SvgDocument.js";
 
-const factory = new ShapeFactory();
+const factory = builtinFactory();
 
 test("document insertion preserves root and nested order and finds shapes at every depth", () => {
   const document = new SvgDocument();

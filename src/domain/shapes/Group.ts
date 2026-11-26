@@ -28,8 +28,12 @@ export class Group extends Shape {
     return this.appearanceDetails();
   }
 
+  protected emptyCopy(): Group {
+    return new Group(this.id);
+  }
+
   override clone(): Group {
-    const copy = this.copyAppearanceTo(new Group(this.id));
+    const copy = this.copyAppearanceTo(this.emptyCopy());
     for (const child of this.childShapes) {
       copy.childShapes.push(child.clone());
     }
@@ -43,14 +47,14 @@ export class Group extends Shape {
     for (const child of children) {
       this.validateReplacementChild(child, ids, ancestors, originalNodes);
     }
-    const copy = this.copyAppearanceTo(new Group(this.id));
+    const copy = this.copyAppearanceTo(this.emptyCopy());
     copy.childShapes.push(...children);
     return copy;
   }
 
   override moved(dx: number, dy: number): Group {
     this.validateTranslation(dx, dy);
-    const copy = this.copyAppearanceTo(new Group(this.id));
+    const copy = this.copyAppearanceTo(this.emptyCopy());
     for (const child of this.childShapes) {
       copy.childShapes.push(child.moved(dx, dy));
     }
@@ -59,7 +63,7 @@ export class Group extends Shape {
 
   override scaled(factor: number): Group {
     this.validateScale(factor);
-    const copy = this.copyAppearanceTo(new Group(this.id));
+    const copy = this.copyAppearanceTo(this.emptyCopy());
     for (const child of this.childShapes) {
       copy.childShapes.push(child.scaled(factor));
     }

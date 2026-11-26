@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ShapeFactory } from "../src/application/ShapeFactory.js";
+import { builtinFactory } from "./support/builtinFactory.js";
 import { SvgDocument } from "../src/domain/SvgDocument.js";
 import type { Shape } from "../src/domain/shapes/Shape.js";
 
-const factory = new ShapeFactory();
+const factory = builtinFactory();
 
 function add(document: SvgDocument, id: string, parent?: string): void {
   document.addShape(factory.create("g", id, []), parent);
@@ -65,7 +65,7 @@ function assertRejectedWithoutMutation(document: SvgDocument, operation: () => u
 test("group uses original sibling order and the first selected slot regardless of argument order", () => {
   const document = new SvgDocument();
   for (const id of ["before", "a", "between", "b", "after"]) add(document, id);
-  const group = document.groupShapes("selected", ["b", "a"]);
+  const group = document.groupShapes(factory.create("g", "selected", []), ["b", "a"]);
   assert.strictEqual(group, document.findShape("selected"));
   assert.deepEqual(ids(document), ["before", "selected", "between", "after"]);
   assert.deepEqual(ids(document, "selected"), ["a", "b"]);
@@ -76,7 +76,7 @@ test("group uses original sibling order and the first selected slot regardless o
 test("group across parents uses their lowest common ancestor, original preorder and earliest affected slot", () => {
   const document = nestedDocument();
   const details = new Map(["a", "b", "c", "d"].map((id) => [id, document.findShape(id).details()]));
-  document.groupShapes("picked", ["d", "b", "c"]);
+  document.groupShapes(factory.create("g", "picked", []), ["d", "b", "c"]);
   assert.deepEqual(ids(document), ["before", "outer", "after"]);
   assert.deepEqual(ids(document, "outer"), ["picked", "left", "middle", "right"]);
   assert.deepEqual(ids(document, "picked"), ["b", "c", "d"]);
@@ -89,7 +89,7 @@ test("group across parents uses their lowest common ancestor, original preorder 
 
 test("group can gather a root and a deeply nested source at the canvas without dropping old empty parents", () => {
   const document = nestedDocument();
-  document.groupShapes("gathered", ["d", "before"]);
+  document.groupShapes(factory.create("g", "gathered", []), ["d", "before"]);
   assert.deepEqual(ids(document), ["gathered", "outer", "after"]);
   assert.deepEqual(ids(document, "gathered"), ["before", "d"]);
   assert.deepEqual(ids(document, "right"), ["c"]);
@@ -101,7 +101,7 @@ test("group of complete sibling subtrees retains descendants and never shares pr
   const document = nestedDocument();
   const old = document.children.flatMap((root) => root.walk());
   const oldTrees = old.map((shape) => [shape, shape.children.map((child) => child.id)] as const);
-  document.groupShapes("branches", ["right", "left"]);
+  document.groupShapes(factory.create("g", "branches", []), ["right", "left"]);
   assert.deepEqual(ids(document, "outer"), ["branches", "middle"]);
   assert.deepEqual(ids(document, "branches"), ["left", "right"]);
   assert.deepEqual(ids(document, "left"), ["a", "b"]);
@@ -117,11 +117,11 @@ test("group rejects ancestor and descendant selections in either order and leave
   const document = nestedDocument();
   for (const sources of [["outer", "a"], ["a", "outer"], ["left", "b"], ["b", "left"]]) {
     const ancestor = sources.includes("outer") ? "outer" : "left";
-    assertRejectedWithoutMutation(document, () => document.groupShapes("candidate", sources),
+    assertRejectedWithoutMutation(document, () => document.groupShapes(factory.create("g", "candidate", []), sources),
       `cannot group a container into its own descendant: ${ancestor}`);
     assert.throws(() => document.findShape("candidate"), { message: "no such shape: candidate" });
   }
-  document.groupShapes("candidate", ["a", "b"]);
+  document.groupShapes(factory.create("g", "candidate", []), ["a", "b"]);
   assert.deepEqual(ids(document, "candidate"), ["a", "b"]);
 });
 
@@ -132,7 +132,7 @@ test("group validates all ids and source multiplicity before changing any tree o
     ["candidate", ["a", "b", "missing"]], ["a", ["b", "c"]],
     ["", ["a", "b"]], ["bad id", ["a", "b"]], ["bad\n", ["a", "b"]],
   ] as Array<[string, string[]]>) {
-    assertRejectedWithoutMutation(document, () => document.groupShapes(newId, sources));
+    assertRejectedWithoutMutation(document, () => document.groupShapes(factory.create("g", newId, []), sources));
   }
   assert.throws(() => document.findShape("candidate"), /no such shape/);
   document.addShape(factory.create("g", "candidate", []));
@@ -144,10 +144,10 @@ test("group ids preserve case and Unicode and remain globally unique at every de
   add(document, "A");
   add(document, "a");
   add(document, "节点");
-  document.groupShapes("组合", ["a", "A"]);
+  document.groupShapes(factory.create("g", "组合", []), ["a", "A"]);
   assert.deepEqual(ids(document, "组合"), ["A", "a"]);
-  assertRejectedWithoutMutation(document, () => document.groupShapes("节点", ["A", "a"]), "id already exists: 节点");
-  assertRejectedWithoutMutation(document, () => document.groupShapes("new", ["A", "组合"]),
+  assertRejectedWithoutMutation(document, () => document.groupShapes(factory.create("g", "节点", []), ["A", "a"]), "id already exists: 节点");
+  assertRejectedWithoutMutation(document, () => document.groupShapes(factory.create("g", "new", []), ["A", "组合"]),
     "cannot group a container into its own descendant: 组合");
 });
 
@@ -180,7 +180,7 @@ test("ungroup supports nested groups and empty groups but rejects top-level grou
   assertRejectedWithoutMutation(document, () => document.ungroupShape("missing"), "no such shape: missing");
   assert.deepEqual(document.ungroupShape("middle"), []);
   assert.deepEqual(ids(document, "outer"), ["left", "right"]);
-  document.groupShapes("nested", ["right", "left"]);
+  document.groupShapes(factory.create("g", "nested", []), ["right", "left"]);
   document.ungroupShape("nested");
   assert.deepEqual(ids(document, "outer"), ["left", "right"]);
   assert.equal(document.parentOf("a")?.id, "left");
@@ -240,7 +240,7 @@ test("front paints last and back paints first within the original siblings while
 
 test("hierarchy rewrites retain document mutation authority for subsequent insertion, editing, deletion and cloning", () => {
   const document = nestedDocument();
-  document.groupShapes("joined", ["b", "d"]);
+  document.groupShapes(factory.create("g", "joined", []), ["b", "d"]);
   document.addTo("joined", "left");
   document.sendToBack("joined");
   document.bringToFront("a");
@@ -282,7 +282,7 @@ test("withChildren returns an independent detached group, preserves styles and c
 
 test("each successful hierarchy operation publishes fresh nodes without mutating previously retained trees", () => {
   for (const operation of [
-    (document: SvgDocument) => document.groupShapes("joined", ["b", "d"]),
+    (document: SvgDocument) => document.groupShapes(factory.create("g", "joined", []), ["b", "d"]),
     (document: SvgDocument) => document.ungroupShape("left"),
     (document: SvgDocument) => document.addTo("right", "left"),
     (document: SvgDocument) => document.bringToFront("left"),

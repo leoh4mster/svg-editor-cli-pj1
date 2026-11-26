@@ -5,12 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { ShapeFactory } from "../src/application/ShapeFactory.js";
+import { builtinFactory } from "./support/builtinFactory.js";
 import type { SvgDocument } from "../src/domain/SvgDocument.js";
 import { SvgXmlCodec } from "../src/infrastructure/svg/SvgXmlCodec.js";
 
 const entryPoint = fileURLToPath(new URL("../src/main.js", import.meta.url));
-const codec = new SvgXmlCodec(new ShapeFactory());
+const codec = new SvgXmlCodec(builtinFactory());
 
 function example(name: string): string {
   return readFileSync(new URL(`../../examples/${name}`, import.meta.url), "utf8");

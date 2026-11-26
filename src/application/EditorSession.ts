@@ -4,8 +4,13 @@ import { CommandHistory } from "./history/CommandHistory.js";
 
 export class EditorSession {
   private document: SvgDocument | undefined;
+  private saved: SvgDocument | undefined;
   private filePath: string | undefined;
   private readonly history = new CommandHistory();
+
+  savedSnapshot(): SvgDocument | undefined {
+    return this.saved?.clone();
+  }
 
   get currentPath(): string | undefined {
     return this.filePath;
@@ -14,6 +19,7 @@ export class EditorSession {
   initialize(width = 800, height = 600): SvgDocument {
     // A rejected replacement must leave the current document untouched.
     const document = new SvgDocument(width, height);
+    this.saved = document.clone();
     this.document = document;
     this.filePath = undefined;
     this.history.blockAfterIo();
@@ -23,6 +29,7 @@ export class EditorSession {
   loadDocument(document: SvgDocument, path: string): SvgDocument {
     // Complete every potentially failing copy before changing session state.
     const imported = document.clone();
+    this.saved = imported.clone();
     this.document = imported;
     this.filePath = path;
     this.history.blockAfterIo();
@@ -30,7 +37,7 @@ export class EditorSession {
   }
 
   markSaved(path: string): void {
-    this.requireDocument();
+    this.saved = this.requireDocument().clone();
     this.filePath = path;
     this.history.blockAfterIo();
   }

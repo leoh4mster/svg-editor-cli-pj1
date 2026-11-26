@@ -1,0 +1,19 @@
+{
+  "name": "@test/framework-probe",
+  "type": "module",
+  "main": "./index.js",
+  "contributes": {
+    "shapes": [
+      "probe"
+    ],
+    "commands": [
+      "probe-info"
+    ],
+    "attributes": [
+      "probe-attributes"
+    ],
+    "decorators": [
+      "probe-label"
+    ]
+  }
+}

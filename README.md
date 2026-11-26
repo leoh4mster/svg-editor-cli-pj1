@@ -1,6 +1,6 @@
 # SVG CLI Editor
 
-Phase 2 第一阶段的 SVG 文件标记与原生大纲已实现。参见 [VS Code 扩展启动说明](vscode-extension/README.md) 和[课程报告与运行截图](doc/README.md)。
+Phase 2 已完成 VS Code 扩展和 CLI 插件框架。可用 `npm run cli -- --config plugins.config.json` 启动配置装配，或用 `npm run cli -- --no-plugins` 回放 Phase 1 行为。[扩展启动说明](vscode-extension/README.md) · [框架、扩展点及运行截图](doc/README.md)
 
 软件设计课程 PJ1 Phase 1：使用 TypeScript 和面向对象设计实现命令行 SVG 编辑器。
 

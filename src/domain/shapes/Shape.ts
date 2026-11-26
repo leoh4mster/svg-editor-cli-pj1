@@ -24,6 +24,18 @@ export abstract class Shape {
 
   abstract get type(): string;
 
+  get svgTag(): string {
+    return this.type;
+  }
+
+  get canUngroup(): boolean {
+    return this.isContainer;
+  }
+
+  get creationSummary(): string {
+    return `${this.label} created`;
+  }
+
   get label(): string {
     return `${this.type}#${this.id}`;
   }
