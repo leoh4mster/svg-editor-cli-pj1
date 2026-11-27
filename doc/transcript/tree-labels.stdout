@@ -1,0 +1,36 @@
+canvas 800x600 created
+g#flow created
+box#n created (g#n + rect#n-rect + text#n-label) in g#flow
+svg (800x600) *
+└── g#flow *
+    └── g#n (box) *
+        ├── rect#n-rect x=120 y=100 w=160 h=60 fill=#4a90d9 *
+        └── text#n-label (140,135) "开始" *
+saved to state.svg (4 elements)
+svg (800x600)
+└── g#flow
+    └── g#n (box)
+        ├── rect#n-rect x=120 y=100 w=160 h=60 fill=#4a90d9
+        └── text#n-label (140,135) "开始"
+box#n label updated: "处理数据"
+svg (800x600) *
+└── g#flow *
+    └── g#n (box) *
+        ├── rect#n-rect x=120 y=100 w=160 h=60 fill=#4a90d9
+        └── text#n-label (140,135) "处理数据" *
+undone: box#n label updated: "处理数据"
+svg (800x600)
+└── g#flow
+    └── g#n (box)
+        ├── rect#n-rect x=120 y=100 w=160 h=60 fill=#4a90d9
+        └── text#n-label (140,135) "开始"
+redone: box#n label updated: "处理数据"
+g#n (box) *
+├── rect#n-rect x=120 y=100 w=160 h=60 fill=#4a90d9
+└── text#n-label (140,135) "处理数据" *
+saved to state.svg (4 elements)
+svg (800x600)
+└── g#flow
+    └── g#n (box)
+        ├── rect#n-rect x=120 y=100 w=160 h=60 fill=#4a90d9
+        └── text#n-label (140,135) "处理数据"

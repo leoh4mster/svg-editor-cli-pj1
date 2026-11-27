@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const entryPoint = fileURLToPath(new URL("../src/main.js", import.meta.url));
 
 test("CLI hierarchy replay recovers from errors, keeps redo through rejected edits and promotes nested children", () => {
-  const result = spawnSync(process.execPath, [entryPoint], {
+  const result = spawnSync(process.execPath, [entryPoint, "--no-plugins"], {
     input: [
       "group absent a b",
       "init",
@@ -72,7 +72,7 @@ test("CLI hierarchy replay recovers from errors, keeps redo through rejected edi
 
 test("phase-four example replays all hierarchy commands and history without errors", () => {
   const input = readFileSync(new URL("../../examples/phase4.cli", import.meta.url), "utf8");
-  const result = spawnSync(process.execPath, [entryPoint], { input, encoding: "utf8", timeout: 5000 });
+  const result = spawnSync(process.execPath, [entryPoint, "--no-plugins"], { input, encoding: "utf8", timeout: 5000 });
   assert.ifError(result.error);
   assert.equal(result.status, 0);
   assert.equal(result.stderr, "");

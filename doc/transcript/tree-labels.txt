@@ -1,0 +1,14 @@
+init
+create g flow
+create box n 120 100 160 60 "开始" in flow
+tree
+save state.svg
+tree
+set n label "处理数据"
+tree
+undo
+tree
+redo
+tree n
+save
+tree

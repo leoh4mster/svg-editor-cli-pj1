@@ -54,7 +54,7 @@ test("CLI replays quoted Chinese text, colors, and nesting and recovers after sh
 
 test("the phase-two replay builds the assignment's eight-element flowchart without errors", () => {
   const input = readFileSync(new URL("../../examples/phase2.cli", import.meta.url), "utf8");
-  const result = spawnSync(process.execPath, [entryPoint], { input, encoding: "utf8", timeout: 5000 });
+  const result = spawnSync(process.execPath, [entryPoint, "--no-plugins"], { input, encoding: "utf8", timeout: 5000 });
   assert.ifError(result.error);
   assert.equal(result.status, 0);
   assert.equal(result.stderr, "");

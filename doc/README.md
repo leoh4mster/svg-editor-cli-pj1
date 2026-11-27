@@ -10,7 +10,7 @@
 | 2 | CLI 四个扩展点、双装配与加载器、对照 `final` 的回归、首次生成指标 | 已完成 |
 | 3 | 独立的 `stats`、`dir` 命令插件，目录访问适配器和测试 | 已完成 |
 | 4 | `box` 及属性处理器，两种装配的独立接入差异证据 | 已完成 |
-| 5 | `modified-star` 与 `(box)` 标签共存、保存点与撤销验证 | 待实施 |
+| 5 | `modified-star` 与 `(box)` 标签共存、保存点与撤销验证 | 已完成 |
 | 6 | 三组会话对照、Git 指标、架构图、ADR、最终验收及 `p2` | 待实施 |
 
 ### 第一阶段 · 从 VS Code 原生大纲到 SVG 源码导航
@@ -84,7 +84,7 @@ left to right direction
 | --- | --- | --- | --- |
 | `ShapeProvider` 提供创建参数说明、构造及 SVG 读回 | [ShapeFactory.create / svgProvider](../src/application/ShapeFactory.ts) 查注册名；[SvgXmlCodec.buildShape](../src/infrastructure/svg/SvgXmlCodec.ts) 调用 `read` | `BasicShapeProvider` 的六个实例；测试用 `ProbeProvider`。禁用可选扩展仍能使用全部 Phase 1 图形 | 未注册的创建类型报 `unknown shape type: … (is the plugin loaded?)`。创建和读回都核对返回 id。读回最先按匹配 SVG 标签的 `data-kind` 选提供者，无法匹配时用原标签的提供者，例如将带标识的分组读作普通 `g` |
 | `Command` 提供语法、帮助及执行方法 | [CommandRegistry.execute / describeCommands](../src/cli/CommandRegistry.ts) | 十九个内置命令类、独立的 `StatsCommand`、`DirCommand` 及测试用 `ProbeCommand`。未安装的命令从帮助中消失，执行时报 `unknown command: <name>` | 由注册项提供用法、说明和执行方法，参数校验由命令负责。缺少方法时加载失败，同类重名报 `duplicate registration: commands/<name>` |
-| `TreeDecorator` 返回按节点 id 索引的行尾标签 | [TreeFormatter.format](../src/application/formatters/TreeFormatter.ts) 在每次树渲染时调用各实例的 `labels` | `ProbeLabel` 验证根行、容器行、子树及保存点。关闭时沿用原树输出 | 每个标签为一段非空单行文字，根行的键是 `undefined`，多标签按注册顺序拼接。空标签或换行报 `invalid tree label: <name>`。提供给装饰器的当前文档和保存点为隔离副本 |
+| `TreeDecorator` 返回按节点 id 索引的行尾标签 | [TreeFormatter.format](../src/application/formatters/TreeFormatter.ts) 在每次树渲染时调用各实例的 `labels` | `ModifiedStar` 提供保存状态星号，`BoxTypeLabel` 提供类型标签；`ProbeLabel` 验证扩展契约。关闭时沿用原树输出 | 每个标签为一段非空单行文字，根行的键是 `undefined`，多标签按注册顺序拼接。空标签或换行报 `invalid tree label: <name>`。提供给装饰器的当前文档和保存点为隔离副本 |
 | `AttributeHandler` 定义属性在目标图形上的修改方式 | [AttributeDispatcher.apply](../src/application/AttributeDispatcher.ts) 由内置 `SetCommand` 在编辑草稿上调用 | `ProbeAttribute` 用一次 `set` 修改两个位置。没有匹配时执行原图形的 `withAttribute` 规则，未知属性报 `unknown attribute: <attr>` | `handles` 只判断，恰好一个命中时调用 `apply`，返回本次编辑的消息。多匹配报 `ambiguous attribute handler: <id>/<attr>`。处理失败丢弃草稿并保留原历史 |
 
 #### 插件怎样装入
@@ -129,7 +129,7 @@ node scripts/verify-compat.mjs
 
 ### 第三阶段 · 统计与目录命令
 
-两个包各自在清单中声明一条命令。代码入口和仓库的 JSON 配置均按 `stats`、`dir` 的顺序加载相同的实现。要单独关闭其中一个，可以将对应配置项设为 `"enabled": false`，再用 `--config plugins.config.json` 启动。被关闭的命令从帮助中消失，执行时由内核报告未知命令。[代码装配](../src/host/codePlugins.ts) · [配置装配](../plugins.config.json)
+两个包各自在清单中声明一条命令。第三阶段的代码入口和仓库 JSON 配置按 `stats`、`dir` 的顺序装入这两个包，后续扩展追加在它们之后。要单独关闭其中一个，可以将对应配置项设为 `"enabled": false`，再用 `--config plugins.config.json` 启动。被关闭的命令从帮助中消失，执行时由内核报告未知命令。[代码装配](../src/host/codePlugins.ts) · [配置装配](../plugins.config.json)
 
 **统计语义。** `stats` 无参数，读取当前文档，依照画布子节点顺序做前序遍历。用 `isContainer` 区分容器与叶子，根画布不参与计数。叶子按类型首次出现的顺序输出，因此嵌套组中的文字可以排在顶层矩形之前。新建空画布输出 `(total 0, containers 0)`。独立测试用自定义复合容器验证其子节点参与统计，第四阶段再随实际 `box` 接入复验。[StatsCommand](../plugins/stats/StatsCommand.ts) · [独立测试](../test/StatsCommand.test.ts)
 
@@ -151,7 +151,7 @@ node scripts/verify-compat.mjs
 
 ### 第四阶段 · 复合图形 box
 
-`create box n1 120 100 160 60 "开始"` 创建一个可嵌套的容器，直接子节点为蓝色矩形 `n1-rect` 和文字 `n1-label`。模板采用 `#4a90d9` 填充，标题基线放在 `(x + 20, y + h / 2 + 5)`，与题目示例坐标一致。整体移动、缩放、删除、分组与撤销使用既有文档操作。树行由独立的 `BoxTypeLabel` 装饰为 `g#n1 (box)`。第五阶段将检验它与保存状态星号的组合。[插件清单](../plugins/box/package.json) · [树标签](../plugins/box/BoxTypeLabel.ts)
+`create box n1 120 100 160 60 "开始"` 创建一个可嵌套的容器，直接子节点为蓝色矩形 `n1-rect` 和文字 `n1-label`。模板采用 `#4a90d9` 填充，标题基线放在 `(x + 20, y + h / 2 + 5)`，与题目示例坐标一致。整体移动、缩放、删除、分组与撤销使用既有文档操作。树行由独立的 `BoxTypeLabel` 装饰为 `g#n1 (box)`。第五阶段已检验它与保存状态星号的组合。[插件清单](../plugins/box/package.json) · [树标签](../plugins/box/BoxTypeLabel.ts)
 
 **ADR · 子部件与读回。** 两个派生 id 与容器 id 一起参与全局唯一性检查，任一冲突都会取消整个创建。必要子部件必须是指定 id 和类型的直接子节点。可以编辑其几何或调整绘制顺序；尝试删除、移到别处、重新分组导致必要子部件脱离时，插件在替换子节点或重建容器时拒绝修改。整个 box 可以移动或删除，`ungroup` 对 box 报错。保存写出标准 SVG 分组及 `data-kind="box"`。安装插件时从实际子树恢复，保留子节点顺序、坐标、样式及附加内容。遇到缺件、类型错或重复 id 时整次读取失败，原文档、保存路径与历史保留。禁用插件后同一文件降级为普通分组，保留标记和子节点，再保存仍可恢复。[复合模型](../plugins/box/Box.ts) · [创建与读回](../plugins/box/BoxProvider.ts)
 
@@ -171,6 +171,25 @@ git diff f41daf2 601da5a -- plugins/box
 npm run build
 node --test dist/test/BoxPlugin.test.js
 node --test dist/test/BoxCli.test.js
+```
+
+
+### 第五阶段 · 保存状态与树标签组合
+
+新增 `plugins/tree-star/` 包，只注册 `modified-star` 装饰器。内核、树渲染器以及此前的插件在本阶段均为零改动。代码装配先加载 box，再加载星号插件，配置装配保持相同顺序。同一行的默认结果为 `g#n (box) *`。[星号实现](../plugins/tree-star/ModifiedStar.ts) · [激活入口](../plugins/tree-star/TreeStarPlugin.ts)
+
+**ADR · dirty 的内容定义。** 当前内容与最近一次成功初始化、读取或保存的快照比较。比较图形类型、实际 SVG 标签、属性值、文字、直接子节点的顺序及父节点归属，属性的插入顺序忽略。根行另外比较画布尺寸、根属性和顶层顺序。新建节点立即标星；相同内容的编辑和失败操作保持原标记。撤销回保存点后消星，重做恢复。画布缩放到新尺寸时仅根行标星，改回保存尺寸后消星。新建空画布和成功读入的文档均从无星状态开始。
+
+**ADR · 祖先与删除。** 节点自身或其子树存在差异时，该节点及其当前祖先一直到根行都会标星。移到新容器的图形自身标星，原父节点通过子节点列表变化得到标记，新父节点通过列表变化及子树差异得到标记。删除后只给仍可显示且内容受影响的祖先标记。单纯调整兄弟顺序时，所属容器及其祖先标记，子图形保持其本身的比较结果。
+
+**ADR · 状态封装与标签顺序。** 未保存 id 集合是 `ModifiedStar` 实例的私有字段，每次请求根据当前快照重新计算，返回独立 Map，避免保存和 undo 后残留旧标记。每个插件只读取公开文档视图，两种标签互不调用。渲染器按注册顺序拼接非空标签，交换配置加载顺序可得到 `g#n * (box)`。禁用星号插件时保留 `(box)`，关闭全部可选插件时恢复 Phase 1 树输出。
+
+**验证与协作记录。** AI 辅助实现后，用独立状态机测试覆盖编辑、保存、再次编辑、撤销及重做，也检查删除、换父节点、重排、属性顺序和多个实例。真实 CLI 在同一临时目录运行两种装配，输出分别逐字节匹配下方会话的预期文件，保存的 SVG 也相同。另用失败的创建、读取、保存及尺寸往返验证星号状态。旧版格式测试显式禁用可选插件，保留原断言。题目 box 会话增加含星号的预期文件，第四阶段的原输出继续保存。全套 `npm run check` 为 163 项通过；7 份 Phase 1 会话在关闭可选插件后与 `final` 的 stdout、stderr 及 SVG 字节一致。[标签会话输入](transcript/tree-labels.txt) · [标签会话预期](transcript/tree-labels.stdout) · [独立测试](../test/ModifiedStar.test.ts) · [CLI 组合测试](../test/TreeLabelsCli.test.ts) · [带星号的 box 会话预期](transcript/box-flowchart-star.stdout)
+
+```sh
+npm run build
+node --test dist/test/ModifiedStar.test.js dist/test/TreeLabelsCli.test.js
+node scripts/verify-compat.mjs
 ```
 
 ---

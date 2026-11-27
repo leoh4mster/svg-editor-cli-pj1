@@ -21,7 +21,7 @@ function workspace(t: TestContext) {
 test("both assemblies replay §6.1 B identically and produce a stable SVG, including when reopened without the plugin", t => {
   const { cwd, run } = workspace(t);
   const input = readFileSync(join(root, "doc/transcript/box-flowchart.txt"), "utf8");
-  const expected = readFileSync(join(root, "doc/transcript/box-flowchart.stdout"));
+  const expected = readFileSync(join(root, "doc/transcript/box-flowchart-star.stdout"));
   const file = join(cwd, "flowchart-box.svg");
   const outputs: Buffer[] = [];
   for (const flags of [[], ["--config", join(root, "plugins.config.json")]]) {
