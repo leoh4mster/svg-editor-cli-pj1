@@ -8,6 +8,8 @@ node scripts/metrics.mjs final HEAD
 
 脚本通过 `git ls-tree` 和 `git show` 读取两个版本的源码，用项目锁定版本的 TypeScript 解析 AST。输出包含两端的文件清单、文件职责、物理行数、圈复杂度及增量。内核、装配处、插件分别计数，VS Code 单列。纯类型接口也计入源码行数，圈复杂度为零。具体计数规则随报告输出。
 
-第六阶段可用 `node scripts/metrics.mjs final p2` 验证最终两端。中间阶段报告引用实际源码提交的 SHA，以便提交报告本身后仍能重现相同字节。
+可用 `node scripts/metrics.mjs final p2` 验证最终两端。中间阶段报告引用实际源码提交的 SHA，以便提交报告本身后仍能重现相同字节。
 
 [第二阶段首次指标](stage-2.md) 比较 `final` 与框架源码提交 `30499fa`。可执行 `node scripts/metrics.mjs final 30499fa | diff - docs/metrics/stage-2.md` 核验报告。
+
+[Phase 2 收尾指标](phase-2.md) 当前比较 final 与已验收运行源码 cdbd319。运行 `node scripts/metrics.mjs final cdbd319 | diff - docs/metrics/phase-2.md` 应无输出。最终交付的运行源码与 cdbd319 相同，运行 `node scripts/metrics.mjs final p2` 可核对相同的文件清单与指标；报告头中的 SHA 与当次被测源码对应。
