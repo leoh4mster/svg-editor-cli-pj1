@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const entryPoint = fileURLToPath(new URL("../src/main.js", import.meta.url));
 
 test("CLI replays quoted Chinese text, colors, and nesting and recovers after shape errors", () => {
-  const result = spawnSync(process.execPath, [entryPoint], {
+  const result = spawnSync(process.execPath, [entryPoint, "--no-plugins"], {
     input: [
       "# shape creation and recovery",
       "create g early",
