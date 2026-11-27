@@ -9,7 +9,7 @@
 | 1 | VS Code 的文件标记、原生大纲、截图和复用分析 | 已完成 |
 | 2 | CLI 四个扩展点、双装配与加载器、对照 `final` 的回归、首次生成指标 | 已完成 |
 | 3 | 独立的 `stats`、`dir` 命令插件，目录访问适配器和测试 | 已完成 |
-| 4 | `box` 及属性处理器，两种装配的独立接入差异证据 | 待实施 |
+| 4 | `box` 及属性处理器，两种装配的独立接入差异证据 | 已完成 |
 | 5 | `modified-star` 与 `(box)` 标签共存、保存点与撤销验证 | 待实施 |
 | 6 | 三组会话对照、Git 指标、架构图、ADR、最终验收及 `p2` | 待实施 |
 
@@ -147,6 +147,30 @@ node scripts/verify-compat.mjs
 npm run build
 node --test dist/test/StatsCommand.test.js dist/test/DirCommand.test.js dist/test/CommandPluginsCli.test.js
 node scripts/verify-compat.mjs
+```
+
+### 第四阶段 · 复合图形 box
+
+`create box n1 120 100 160 60 "开始"` 创建一个可嵌套的容器，直接子节点为蓝色矩形 `n1-rect` 和文字 `n1-label`。模板采用 `#4a90d9` 填充，标题基线放在 `(x + 20, y + h / 2 + 5)`，与题目示例坐标一致。整体移动、缩放、删除、分组与撤销使用既有文档操作。树行由独立的 `BoxTypeLabel` 装饰为 `g#n1 (box)`。第五阶段将检验它与保存状态星号的组合。[插件清单](../plugins/box/package.json) · [树标签](../plugins/box/BoxTypeLabel.ts)
+
+**ADR · 子部件与读回。** 两个派生 id 与容器 id 一起参与全局唯一性检查，任一冲突都会取消整个创建。必要子部件必须是指定 id 和类型的直接子节点。可以编辑其几何或调整绘制顺序；尝试删除、移到别处、重新分组导致必要子部件脱离时，插件在替换子节点或重建容器时拒绝修改。整个 box 可以移动或删除，`ungroup` 对 box 报错。保存写出标准 SVG 分组及 `data-kind="box"`。安装插件时从实际子树恢复，保留子节点顺序、坐标、样式及附加内容。遇到缺件、类型错或重复 id 时整次读取失败，原文档、保存路径与历史保留。禁用插件后同一文件降级为普通分组，保留标记和子节点，再保存仍可恢复。[复合模型](../plugins/box/Box.ts) · [创建与读回](../plugins/box/BoxProvider.ts)
+
+**属性与撤销。** `set n1 fill red` 在编辑草稿上更新内部矩形的填充色，`set n1 label "处理数据 v2"` 更新内部文字内容。两条命令各为一个 undo 单元，重做分别恢复各自的修改。读入文件时，分组元素原有的 SVG 样式保存在分组上，避免导入阶段把它错误转发到内部矩形。撤销提示沿用 Phase 1 的 `undone: …` 格式。[属性处理器](../plugins/box/BoxAttributes.ts)
+
+**两种装配的 Git 证据。** 两条演示提交有共同父提交 `b132c27`，插件目录内容一致。A 在运行代码中只新增插件并改动顶层代码装配；B 只新增插件并改动配置。二者均附插件测试、版本 B 会话输入及预期输出。旧会话中明确期望“未加载 box”的测试，启动时显式传入 `--no-plugins`，原断言保留。合并提交 `26e1b46` 保留两条接入历史。可在仓库根目录执行：
+
+```sh
+git diff --name-status f41daf2^ f41daf2
+git diff --name-status 601da5a^ 601da5a
+git diff f41daf2 601da5a -- plugins/box
+```
+
+**验收与协作记录。** AI 辅助实现后，对照题目中的坐标和绘制顺序核查了 §6.1 版本 B 的树。两种装配的 stdout 逐字节匹配同一预期，stderr 为空，生成的 SVG 逐字节一致，读回后统计为 5 个叶子和 3 个容器。另用含损坏 box 的文件尝试覆盖正在编辑的文档，检查失败后可执行原 redo，随后无参数保存仍写回原路径。CLI 全套 157 项测试通过，禁用可选插件重放 7 份 Phase 1 会话继续与 `final` 一致。[输入](transcript/box-flowchart.txt) · [实际输出基线](transcript/box-flowchart.stdout) · [插件独立测试](../test/BoxPlugin.test.ts) · [CLI 验收](../test/BoxCli.test.ts)
+
+```sh
+npm run build
+node --test dist/test/BoxPlugin.test.js
+node --test dist/test/BoxCli.test.js
 ```
 
 ---
